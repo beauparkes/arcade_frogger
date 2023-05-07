@@ -25,7 +25,7 @@ class Window2(arcade.Window):
 
 # Create instances of the windows
 window1 = Window1()
-
+window2 = Window2()
 
 # Run the game loop
 arcade.run()

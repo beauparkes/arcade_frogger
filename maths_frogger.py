@@ -1,10 +1,11 @@
 import arcade
 import arcade.gui
 import pyglet
+import random
 
 
-SCREEN_WIDTH = 1000
-SCREEN_HEIGHT = 1000
+SCREEN_WIDTH = 2000
+SCREEN_HEIGHT = 1300
 font_title_1 = "Kenney Future"
 font_body_1 = "Segoe Print"
 SCREEN_TITLE = "Maths Frogger - Deluxe Edition"
@@ -13,11 +14,12 @@ TITLE_FONT_SIZE = 30
 DEFAULT_FONT_SIZE = 20
 FONT_COLOUR_GREEN = [0,255,50,255]
 FONT_COLOUR_RED = [255,55,0,255]
+SPRITE_SCALING = 0.5
 
 
-#MOVEMENT_SPEED = 10
-#MOVEMENT_LIMIT = 100
-#DEAD_ZONE = 0.5
+MOVEMENT_SPEED = 10
+MOVEMENT_LIMIT = 50
+DEAD_ZONE = 0.5
 
 
 class Controllers():
@@ -35,7 +37,6 @@ class Controllers():
         self.control_0_status = "init"
         self.control_1_status = "init"
         self.update_controller_status()
-
 
     def on_connect(self, controller):
         self.has_update = True
@@ -88,14 +89,17 @@ class Controllers():
 
 
 class DebugWindow(arcade.Window):
-    """ Debug window."""
+    """ Debug window, currently not well implimented."""
     def __init__(self):
         super().__init__(
             SCREEN_WIDTH,
             SCREEN_HEIGHT,
             SCREEN_TITLE,
-            visible=False
-        )
+            visible=False,
+       )
+
+    def on_close(self):
+        arcade.exit()
 
 
 class MainWindow(arcade.Window):
@@ -111,14 +115,19 @@ class MainWindow(arcade.Window):
 
     def on_key_press(self, key, modifiers):
         if key == arcade.key.L:
-            print("Debug window opened")
             if not self.debug.visible:
+                print("Debug window opened")
                 self.debug.set_visible(True)
                 self.activate()
             else:
+                print("Debug window closed")
                 self.debug.set_visible(False)
                 self.activate()
-    
+
+    def on_resize(self, width, height):
+        # this function is called any time the window is resized
+        print(f"{width} {height}")
+
     def on_close(self):
         arcade.exit()
 
@@ -131,15 +140,15 @@ class MenuView(arcade.View, Controllers):
         super().__init__()
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
+        self.players = 1
         self.mode = "endless"
         self.difficulty = "easy"
         self.controllers = Controllers()
 
+        # Setup base background colour
+        arcade.set_background_color(arcade.color.BLACK)
 
-        arcade.set_background_color(arcade.color.DARK_BLUE_GRAY)
-
-
-        # Setup menu button layout
+        # Setup menu button layouts
         self.red_style = {
             "font_name": font_body_1,
             "font_size": DEFAULT_FONT_SIZE,
@@ -152,7 +161,6 @@ class MenuView(arcade.View, Controllers):
             # also used when hovered
             "font_color_pressed": arcade.color.RED,
         }
-
         self.green_style = {
             "font_name": font_body_1,
             "font_size": DEFAULT_FONT_SIZE,
@@ -165,7 +173,6 @@ class MenuView(arcade.View, Controllers):
             # also used when hovered
             "font_color_pressed": arcade.color.RED,
         }
-
         self.status_style = {
             "font_name": font_title_1,
             "font_size": DEFAULT_FONT_SIZE,
@@ -178,7 +185,8 @@ class MenuView(arcade.View, Controllers):
             # also used when hovered
             "font_color_pressed": arcade.color.RED,
         }
-
+        
+        # Create all layouts
         self.main_layout = arcade.gui.UIBoxLayout(vertical=True, space_between=10)
         self.player_text_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
         self.player_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
@@ -197,7 +205,7 @@ class MenuView(arcade.View, Controllers):
             font_size=TITLE_FONT_SIZE,
             font_name=font_title_1,
         )
-        
+        # Add title to manager
         self.manager.add(arcade.gui.UIAnchorWidget(
             anchor_x="center_x",
             anchor_y="top",
@@ -213,20 +221,21 @@ class MenuView(arcade.View, Controllers):
             font_size=DEFAULT_FONT_SIZE,
             font_name=font_title_1,
         )
+        # Add player label to layout
         self.player_text_layout.add(player_text.with_space_around(bottom=0))
         self.main_layout.add(self.player_text_layout.with_space_around(bottom=0))
 
-        # Create player buttons
+        # Create player1 buttons
         one_player_button = arcade.gui.UIFlatButton(text="One Player", width=200, style=self.green_style)
         one_player_button.player_num = 1
         one_player_button.on_click = self.player_select
         self.player_layout.add(one_player_button.with_space_around(bottom=20))
-
+        # Create player2 buttons
         two_player_button = arcade.gui.UIFlatButton(text="Two Player", width=200, style=self.red_style)
         two_player_button.player_num = 2
         two_player_button.on_click = self.player_select
         self.player_layout.add(two_player_button.with_space_around(bottom=20))
-
+        # Add player layout to main layout
         self.main_layout.add(self.player_layout)
 
         #Create option label
@@ -245,7 +254,6 @@ class MenuView(arcade.View, Controllers):
         self.main_layout.add(self.mode_layout.with_space_around(bottom=20))
 
         # Add player difficulty to main layout
-
         difficulty_text = arcade.gui.UILabel(
             text="Difficulty",
             size_hint=(300, 50),
@@ -253,6 +261,7 @@ class MenuView(arcade.View, Controllers):
             font_size=DEFAULT_FONT_SIZE,
             font_name=font_title_1,
         )
+        # Add difficulty label to layout
         self.difficulty_text_layout.add(difficulty_text.with_space_around(bottom=0))
         self.main_layout.add(self.difficulty_text_layout.with_space_around(bottom=0))
 
@@ -278,6 +287,7 @@ class MenuView(arcade.View, Controllers):
         start_red_style = dict(self.red_style)
         start_red_style["bg_color"] = arcade.color.BALL_BLUE
         start_button._style = start_red_style
+        start_button.on_click = self.startGame
         self.start_layout.add(start_button.with_space_around(bottom=0))
         self.main_layout.add(self.start_layout.with_space_around(bottom=20))
 
@@ -338,6 +348,7 @@ class MenuView(arcade.View, Controllers):
         """Runs when a players selection is made"""
         self.update_button_style(event)
         self.player_options(event.source.player_num)
+        self.players = event.source.player_num
 
     def set_mode(self, event):
         self.mode = event.source.mode
@@ -419,20 +430,370 @@ class MenuView(arcade.View, Controllers):
     def on_update(self, delta_time):
         self.update_controller_status()
 
+    def startGame(self, event):
+        game_view = GameView(self.players, self.mode, self.difficulty, self.controllers)
+        game_view.player_setup()
+        game_view.level_setup()
+        self.window.show_view(game_view)
 
-class Game():
-    def __init__(self):
-        self.gameWindow = MainWindow
-        self.gameDebug = DebugWindow
+class Player(arcade.Sprite):
+    """ Player class """
+    def __init__(self, filename, scale, last_x=0, last_y=0, moving_x=0, moving_y=0):
+        super().__init__(filename, scale)
+
+        self.last_x = last_x
+        self.last_y = last_y
+        self.moving_x = moving_x
+        self.moving_y = moving_y
+
+    def update(self):
+        # Move the player
+        # Remove these lines if physics engine is moving player.
+        self.center_x += self.change_x
+        self.center_y += self.change_y
+
+        if abs(self.center_y - self.last_y) > MOVEMENT_LIMIT and self.moving_y == 1:
+            self.change_y = 0
+            self.update_player_texture(0)
+            self.last_y = 0
+            self.moving_y = 0
+            if self.bottom <= 0:
+                self.bottom = 0
+            elif self.top >= SCREEN_HEIGHT:
+                self.top = SCREEN_HEIGHT
+        if abs(self.center_x - self.last_x) > MOVEMENT_LIMIT and self.moving_x == 1:
+            self.change_x = 0
+            self.update_player_texture(0)
+            self.last_x = 0
+            self.moving_x = 0
+            if self.left <= 0:
+                self.left = 0
+            elif self.right >= SCREEN_WIDTH:
+                self.right = SCREEN_WIDTH
+
+    def update_player_texture(self, val):
+        self.set_texture(val)
+
+
+class GameView(arcade.View):
+    """
+    Main application class.
+
+    """
+    def __init__(self, players, mode, difficulty, controllers):
+        """
+        Initializer
+        
+        """
+        # Call the parent class initializer
+        super().__init__()
+
+        # Variables that will hold sprite lists
+        self.player_list = None
+
+        # Set up the player info
+        self.player_sprite = None
+
+        # Track the current state of what key is pressed
+        self.left_pressed = False
+        self.right_pressed = False
+        self.up_pressed = False
+        self.down_pressed = False
+        self.controller_dir_reset = True
+
+        # Set the background color
+        arcade.set_background_color(arcade.color.AMAZON)
+
+        # menu class varaibles
+        self.players = players
+        self.mode = mode
+        self.difficulty = difficulty
+        self.controllers = controllers
+
+        # Get list of game controllers that are available
+        controllers = arcade.get_game_controllers()
+
+        # If we have any...
+        if controllers:
+            # Grab the first one in  the list
+            self.controller = controllers[0]
+
+            # Open it for input
+            self.controller.open()
+
+            # Push this object as a handler for controller events.
+            # Required for the on_joy* events to be called.
+            self.controller.push_handlers(self)
+            #print("Controllers were found")
+            #print(dir(self.controller))
+            #print(self.controller.button_controls)
+            #print(self.controller.buttons)
+        else:
+            # Handle if there are no controllers.
+            print("No controllers found")
+            self.controller = None
+
+    def player_setup(self):
+        """ Set up the game and initialize the variables. """
+
+        # Sprite lists
+        self.player_list = arcade.SpriteList()
+
+        # Set up the player
+        self.player_sprite = Player(":resources:images/enemies/frog.png", SPRITE_SCALING)
+        self.player_sprite.append_texture(arcade.load_texture(":resources:images/enemies/frog_move.png"))
+        self.player_sprite.center_x = SCREEN_WIDTH/2
+        self.player_sprite.bottom = 0
+        self.player_list.append(self.player_sprite)
+
+
+    
+    def level_setup(self):
+        """ A function that will setup the frogger game enemies which includes logs, turtles, cars, and trucks.
+
+        """
+        # A list of all the logs
+        self.log_list = arcade.SpriteList()
+
+        # A list of all the turtles
+        self.turtle_list = arcade.SpriteList()
+
+        # A list of all the cars
+        self.car_list = arcade.SpriteList()
+
+        # A list of all the trucks
+        self.truck_list = arcade.SpriteList()
+
+        # Setup water
+        self.water_rect = arcade.create_rectangle_filled(SCREEN_WIDTH*0.5, SCREEN_HEIGHT*0.75, 3000, 600, arcade.color.BLUE)
+        #self.water_list.append(self.water_sprite)
+
+        # A list of all the land sprites
+        # at the moment this is just whatever is not water and not the road.
+
+        # Setup road
+        self.road_rect = arcade.create_rectangle_filled(SCREEN_WIDTH*0.5, SCREEN_HEIGHT*0.3, 3000, 400, arcade.color.BLACK)
+
+    def create_turtle(self, index, height_offset, x_min, x_max):
+        """ A function that will create a turtle sprite and add it to the turtle list.
+        """
+        turtle_angle = 180
+        turtle_sprite = ":resources:images/topdown_tanks/treeBrown_small.png"
+        turtle = arcade.Sprite(turtle_sprite, SPRITE_SCALING*2)
+        turtle.center_x = SCREEN_WIDTH
+        turtle.center_y = SCREEN_HEIGHT*height_offset
+        turtle.angle = turtle_angle
+        turtle.change_x = random.randrange(x_min, x_max)
+        turtle.index = index
+        self.turtle_list.append(turtle)
+
+    def moving_turtles(self, delta_time):
+        """ A function that will move all the turtles in the turtle list along the x axis and reset them if they go off screen.
+        """
+
+        # Adjust odds based on delta-time
+        turtle0_odds = int(90 * (1 / 60 * delta_time))
+        turtle1_odds = int(120 * (1 / 60 * delta_time))
+        self.turtle_blocking = [False, False]
+        
+        for found_turtle in self.turtle_list:
+            if found_turtle.right > SCREEN_WIDTH-200:
+                self.turtle_blocking[found_turtle.index] = True
+        print(self.turtle_blocking)
+
+        # Add turtle0
+        if random.randrange(turtle0_odds+1) == 0:
+            if not self.turtle_blocking[0]:
+                self.create_turtle(0, 0.85, 2, 3)
+        
+        # Add turtle1
+        if random.randrange(turtle1_odds+1) == 0:
+            if not self.turtle_blocking[1]:
+                self.create_turtle(1, 0.55, 2, 3)
+
+        for turtle in self.turtle_list:
+            turtle.center_x -= turtle.change_x
+            if turtle.left > SCREEN_WIDTH:
+                turtle.remove_from_sprite_lists()
+
+    def create_log(self, index, height_offset, x_min, x_max):
+        """ A function that will create a log sprite and add it to the log list.
+        """
+        log_angle = 180
+        log_sprite = ":resources:images/tiles/bridgeB.png"
+        log = arcade.Sprite(log_sprite, SPRITE_SCALING*2)
+        log.center_x = log.left
+        log.center_y = SCREEN_HEIGHT*height_offset
+        log.angle = log_angle
+        log.change_x = random.randrange(x_min, x_max)
+        log.index = index
+        self.log_list.append(log)
+
+    def moving_logs(self, delta_time):
+        """ A function that will move all the logs in the log list along the x axis and reset them if they go off screen.
+        """
+
+        # Adjust odds based on delta-time
+        log0_odds = int(250 * (1 / 60) / delta_time)
+        log1_odds = int(200 * (1 / 60) / delta_time)
+        log2_odds = int(100 * (1 / 60) / delta_time)
+        self.log_blocking = [False, False, False]
+
+        for found_log in self.log_list:
+            if found_log.left < 100:
+                self.log_blocking[found_log.index] = True
+        print(self.log_blocking)
+
+        # Add log0
+        if random.randrange(log0_odds+1) == 0:
+            if not self.log_blocking[0]:
+                self.create_log(0, 0.65, 1, 2)
+        # Add log1
+        if random.randrange(log1_odds+1) == 0:
+            if not self.log_blocking[1]:
+                self.create_log(1, 0.75, 2, 3)
+        # Add log2
+        if random.randrange(log2_odds+1) == 0:
+            if not self.log_blocking[2]:
+                self.create_log(2, 0.95, 4, 5)
+        
+        
+        for log in self.log_list:
+            log.center_x += log.change_x
+            if log.right < 0:
+                log.remove_from_sprite_lists()
+
+
+
+    def on_draw(self):
+        """ Render the screen. """
+
+        # Clear the screen
+        self.clear()
+
+        # Draw all the sprites.
+        self.water_rect.draw()
+        self.road_rect.draw()
+        self.log_list.draw()
+        self.turtle_list.draw()
+        self.player_list.draw()
+
+    def update_player_speed(self):
+        self.player_sprite.update_player_texture(1)
+
+        if self.up_pressed and not self.down_pressed:
+            self.player_sprite.moving_y = 1
+            self.player_sprite.change_y = MOVEMENT_SPEED
+        elif self.down_pressed and not self.up_pressed:
+            self.player_sprite.moving_y = 1
+            self.player_sprite.change_y = -MOVEMENT_SPEED
+        if self.left_pressed and not self.right_pressed:
+            self.player_sprite.moving_x = 1
+            self.player_sprite.change_x = -MOVEMENT_SPEED
+        elif self.right_pressed and not self.left_pressed:
+            self.player_sprite.moving_x = 1
+            self.player_sprite.change_x = MOVEMENT_SPEED
+
+    def on_update(self, delta_time):
+        """ Movement and game logic """
+
+        # Call update to move the sprite
+        # If using a physics engine, call update player to rely on physics engine
+        # for movement, and call physics engine here.
+        self.player_list.update()
+        self.moving_logs(delta_time)
+        self.moving_turtles(delta_time)
+
+        if self.controller:
+
+            # use bellow to see which button was pressed
+            #print(self.controller.buttons)
+
+            # controller Up
+            if self.controller.y < (DEAD_ZONE*-1) and self.player_sprite.moving_y == 0 and self.controller_dir_reset:
+                self.up_pressed = True
+                self.player_sprite.last_y = self.player_sprite.center_y
+                self.update_player_speed()
+                self.controller_dir_reset = False
+
+            # controller Down
+            if self.controller.y > DEAD_ZONE and self.player_sprite.moving_y == 0 and self.controller_dir_reset:
+                self.down_pressed = True
+                self.player_sprite.last_y = self.player_sprite.center_y
+                self.update_player_speed()
+                self.controller_dir_reset = False
+
+            # controller Right
+            if self.controller.x > DEAD_ZONE and self.player_sprite.moving_x == 0 and self.controller_dir_reset:
+                self.right_pressed = True
+                self.player_sprite.last_x = self.player_sprite.center_x
+                self.update_player_speed()
+                self.controller_dir_reset = False
+
+            # controller Left
+            if self.controller.x < (DEAD_ZONE*-1) and self.player_sprite.moving_x == 0 and self.controller_dir_reset:
+                self.left_pressed = True
+                self.player_sprite.last_x = self.player_sprite.center_x
+                self.update_player_speed()
+                self.controller_dir_reset = False
+
+            # controler dir reset
+            if abs(self.controller.x) < DEAD_ZONE and abs(self.controller.y) < DEAD_ZONE:
+                self.up_pressed = False
+                self.down_pressed = False
+                self.left_pressed = False
+                self.right_pressed = False
+                self.controller_dir_reset = True
+
+            #if self.controller.buttons[0]:
+            #    pass
+            if self.controller.buttons[1]:
+                menu_view = MenuView()
+                self.window.show_view(menu_view)
+
+    def on_key_press(self, key, modifiers):
+        """Called whenever a key is pressed. """
+
+        if key == arcade.key.UP or key == arcade.key.W:
+            self.up_pressed = True
+            self.player_sprite.last_y = self.player_sprite.center_y
+            self.update_player_speed()
+        elif key == arcade.key.DOWN or key == arcade.key.S:
+            self.down_pressed = True
+            self.player_sprite.last_y = self.player_sprite.center_y
+            self.update_player_speed()
+        elif key == arcade.key.LEFT or key == arcade.key.A:
+            self.left_pressed = True
+            self.player_sprite.last_x = self.player_sprite.center_x
+            self.update_player_speed()
+        elif key == arcade.key.RIGHT or key == arcade.key.D:
+            self.right_pressed = True
+            self.player_sprite.last_x = self.player_sprite.center_x
+            self.update_player_speed()
+        if key == arcade.key.ESCAPE:
+            menu_view = MenuView()
+            self.window.show_view(menu_view)
+
+    def on_key_release(self, key, modifiers):
+        """Called when the user releases a key. """
+
+        if key == arcade.key.UP or key == arcade.key.W:
+            self.up_pressed = False
+        elif key == arcade.key.DOWN or key == arcade.key.S:
+            self.down_pressed = False
+        elif key == arcade.key.LEFT or key == arcade.key.A:
+            self.left_pressed = False
+        elif key == arcade.key.RIGHT or key == arcade.key.D:
+            self.right_pressed = False
+
 
 
 def main():
     """Startup"""
-    game = Game()
-    debug = game.gameDebug()
-    mainWindow = game.gameWindow(debug)
-    menu_view = MenuView()
-    mainWindow.show_view(menu_view)
+    debug = DebugWindow()
+    mainWindow = MainWindow(debug)
+    menuView = MenuView()
+    mainWindow.show_view(menuView)
     arcade.run()
 
 if __name__ == "__main__":

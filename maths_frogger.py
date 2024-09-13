@@ -22,6 +22,15 @@ MOVEMENT_LIMIT_X = (SCREEN_WIDTH  / 10) - 10
 MOVEMENT_LIMIT_Y = (SCREEN_HEIGHT + 0.5) / 11
 DEAD_ZONE = 0.5
 
+def load_texture_pair(filename):
+    """
+    Load a texture pair, with the second being a mirror image.
+    """
+    return [
+        arcade.load_texture(filename),
+        arcade.load_texture(filename, flipped_horizontally=True),
+    ]
+
 
 class Controllers():
     def __init__(self):
@@ -440,25 +449,30 @@ class MenuView(arcade.View, Controllers):
 
 class Player(arcade.Sprite):
     """ Player class """
-    def __init__(self, filename, scale):
-        super().__init__(filename, scale)
-
+    def __init__(self, scale):
+        super().__init__()
+        self.scale = scale
         self.last_x = 0
         self.last_y = 0
         self.moving_x = 0
         self.moving_y = 0
+        self.flipped_v = 0
+        frog_idle = ":resources:images/enemies/frog.png"
+        frog_jump = ":resources:images/enemies/frog_move.png"
+        self.frog_idle_pair = load_texture_pair(frog_idle)
+        self.frog_jump_pair = load_texture_pair(frog_jump)
+        self.texture = self.frog_idle_pair[0]
+        self.texture_direction = 0
 
     def update(self):
         # Move the player
         # Remove these lines if physics engine is moving player.
-        #print(self.right)
-        print(self.top)
         self.center_x += self.change_x
         self.center_y += self.change_y
 
         if abs(self.center_y - self.last_y) >= MOVEMENT_LIMIT_Y and self.moving_y == 1:
             self.change_y = 0
-            self.update_player_texture(0)
+            self.update_player_texture("idle")
             self.last_y = 0
             self.moving_y = 0
             if self.bottom <= 0:
@@ -467,7 +481,7 @@ class Player(arcade.Sprite):
                 self.top = SCREEN_HEIGHT
         if abs(self.center_x - self.last_x) >= MOVEMENT_LIMIT_X and self.moving_x == 1:
             self.change_x = 0
-            self.update_player_texture(0)
+            self.update_player_texture("idle")
             self.last_x = 0
             self.moving_x = 0
             if self.left <= 0:
@@ -475,8 +489,11 @@ class Player(arcade.Sprite):
             elif self.right >= SCREEN_WIDTH:
                 self.right = SCREEN_WIDTH
 
-    def update_player_texture(self, val):
-        self.set_texture(val)
+    def update_player_texture(self, texture_state):
+        if texture_state == "idle":
+            self.texture = self.frog_idle_pair[self.texture_direction]
+        if texture_state == "jump":
+            self.texture = self.frog_jump_pair[self.texture_direction]
 
 
 class GameView(arcade.View):
@@ -544,8 +561,7 @@ class GameView(arcade.View):
         self.player_list = arcade.SpriteList()
 
         # Set up the player
-        self.player_sprite = Player(":resources:images/enemies/frog.png", SPRITE_SCALING)
-        self.player_sprite.append_texture(arcade.load_texture(":resources:images/enemies/frog_move.png"))
+        self.player_sprite = Player(SPRITE_SCALING)
         self.player_sprite.center_x = SCREEN_WIDTH/2
         self.player_sprite.bottom = 0
         self.player_list.append(self.player_sprite)
@@ -683,8 +699,7 @@ class GameView(arcade.View):
         self.player_list.draw()
 
     def update_player_speed(self):
-        self.player_sprite.update_player_texture(1)
-
+        self.player_sprite.update_player_texture("jump")
         if self.up_pressed and not self.down_pressed:
             self.player_sprite.moving_y = 1
             self.player_sprite.change_y = MOVEMENT_SPEED
@@ -769,10 +784,12 @@ class GameView(arcade.View):
         elif key == arcade.key.LEFT or key == arcade.key.A:
             self.left_pressed = True
             self.player_sprite.last_x = self.player_sprite.center_x
+            self.player_sprite.texture_direction = 0
             self.update_player_speed()
         elif key == arcade.key.RIGHT or key == arcade.key.D:
             self.right_pressed = True
             self.player_sprite.last_x = self.player_sprite.center_x
+            self.player_sprite.texture_direction = 1
             self.update_player_speed()
         if key == arcade.key.ESCAPE:
             menu_view = MenuView()

@@ -4,8 +4,8 @@ import pyglet
 import random
 
 
-SCREEN_WIDTH = 2000
-SCREEN_HEIGHT = 1300
+SCREEN_WIDTH = 1040
+SCREEN_HEIGHT = 1035
 font_title_1 = "Kenney Future"
 font_body_1 = "Segoe Print"
 SCREEN_TITLE = "Maths Frogger - Deluxe Edition"
@@ -18,7 +18,8 @@ SPRITE_SCALING = 0.5
 
 
 MOVEMENT_SPEED = 10
-MOVEMENT_LIMIT = 50
+MOVEMENT_LIMIT_X = (SCREEN_WIDTH  / 10) - 10
+MOVEMENT_LIMIT_Y = (SCREEN_HEIGHT + 0.5) / 11
 DEAD_ZONE = 0.5
 
 
@@ -92,8 +93,8 @@ class DebugWindow(arcade.Window):
     """ Debug window, currently not well implimented."""
     def __init__(self):
         super().__init__(
-            SCREEN_WIDTH,
-            SCREEN_HEIGHT,
+            int(SCREEN_WIDTH/2),
+            int(SCREEN_HEIGHT/2),
             SCREEN_TITLE,
             visible=False,
        )
@@ -436,23 +437,26 @@ class MenuView(arcade.View, Controllers):
         game_view.level_setup()
         self.window.show_view(game_view)
 
+
 class Player(arcade.Sprite):
     """ Player class """
-    def __init__(self, filename, scale, last_x=0, last_y=0, moving_x=0, moving_y=0):
+    def __init__(self, filename, scale):
         super().__init__(filename, scale)
 
-        self.last_x = last_x
-        self.last_y = last_y
-        self.moving_x = moving_x
-        self.moving_y = moving_y
+        self.last_x = 0
+        self.last_y = 0
+        self.moving_x = 0
+        self.moving_y = 0
 
     def update(self):
         # Move the player
         # Remove these lines if physics engine is moving player.
+        #print(self.right)
+        print(self.top)
         self.center_x += self.change_x
         self.center_y += self.change_y
 
-        if abs(self.center_y - self.last_y) > MOVEMENT_LIMIT and self.moving_y == 1:
+        if abs(self.center_y - self.last_y) >= MOVEMENT_LIMIT_Y and self.moving_y == 1:
             self.change_y = 0
             self.update_player_texture(0)
             self.last_y = 0
@@ -461,7 +465,7 @@ class Player(arcade.Sprite):
                 self.bottom = 0
             elif self.top >= SCREEN_HEIGHT:
                 self.top = SCREEN_HEIGHT
-        if abs(self.center_x - self.last_x) > MOVEMENT_LIMIT and self.moving_x == 1:
+        if abs(self.center_x - self.last_x) >= MOVEMENT_LIMIT_X and self.moving_x == 1:
             self.change_x = 0
             self.update_player_texture(0)
             self.last_x = 0
@@ -599,7 +603,7 @@ class GameView(arcade.View):
         for found_turtle in self.turtle_list:
             if found_turtle.right > SCREEN_WIDTH-200:
                 self.turtle_blocking[found_turtle.index] = True
-        print(self.turtle_blocking)
+        #print(self.turtle_blocking)
 
         # Add turtle0
         if random.randrange(turtle0_odds+1) == 0:
@@ -642,7 +646,7 @@ class GameView(arcade.View):
         for found_log in self.log_list:
             if found_log.left < 100:
                 self.log_blocking[found_log.index] = True
-        print(self.log_blocking)
+        #print(self.log_blocking)
 
         # Add log0
         if random.randrange(log0_odds+1) == 0:

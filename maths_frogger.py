@@ -18,8 +18,8 @@ SPRITE_SCALING = 0.5
 
 
 MOVEMENT_SPEED = 10
-MOVEMENT_LIMIT_X = (SCREEN_WIDTH  / 10) - 10
-MOVEMENT_LIMIT_Y = (SCREEN_HEIGHT + 0.5) / 11
+MOVEMENT_LIMIT_X = (SCREEN_WIDTH  / 12) - 10
+MOVEMENT_LIMIT_Y = (SCREEN_HEIGHT + 0.5) / 16
 DEAD_ZONE = 0.5
 
 def load_texture_pair(filename):
@@ -458,42 +458,70 @@ class Player(arcade.Sprite):
         self.moving_y = 0
         self.flipped_v = 0
         frog_idle = ":resources:images/enemies/frog.png"
-        frog_jump = ":resources:images/enemies/frog_move.png"
+        frog_jump_lr = ":resources:images/enemies/frog_move.png"
+        frog_jump_c = ":resources:images/enemies/slimeGreen.png"
+        frog_dead = ":resources:images/enemies/wormGreen_dead.png"
         self.frog_idle_pair = load_texture_pair(frog_idle)
-        self.frog_jump_pair = load_texture_pair(frog_jump)
+        self.frog_jump_lr_pair = load_texture_pair(frog_jump_lr)
+        self.frog_jump_c_pair = load_texture_pair(frog_jump_c)
+        self.frog_dead_pair = load_texture_pair(frog_dead)
         self.texture = self.frog_idle_pair[0]
         self.texture_direction = 0
+        self.landable_collided_sprites = []
+        self.collide_offset = "none"
+        self.death_collided_sprites = []
 
     def update(self):
         # Move the player
         # Remove these lines if physics engine is moving player.
-        self.center_x += self.change_x
-        self.center_y += self.change_y
 
-        if abs(self.center_y - self.last_y) >= MOVEMENT_LIMIT_Y and self.moving_y == 1:
-            self.change_y = 0
-            self.update_player_texture("idle")
-            self.last_y = 0
-            self.moving_y = 0
-            if self.bottom <= 0:
-                self.bottom = 0
-            elif self.top >= SCREEN_HEIGHT:
-                self.top = SCREEN_HEIGHT
-        if abs(self.center_x - self.last_x) >= MOVEMENT_LIMIT_X and self.moving_x == 1:
-            self.change_x = 0
-            self.update_player_texture("idle")
-            self.last_x = 0
-            self.moving_x = 0
-            if self.left <= 0:
-                self.left = 0
-            elif self.right >= SCREEN_WIDTH:
-                self.right = SCREEN_WIDTH
+        # if death
+        print(self.top)
+        if self.death_collided_sprites:
+            if not self.landable_collided_sprites:
+                self.texture = self.frog_dead_pair[0]
+
+        if self.change_x  == 0 and self.change_y == 0:
+            if not self.landable_collided_sprites:
+                return
+            if self.collide_offset == "none":
+                self.collide_offset = self.center_x - self.landable_collided_sprites[0].center_x
+            else:
+                self.set_position(self.landable_collided_sprites[0].center_x + self.collide_offset, self.center_y)
+
+        else:
+            self.collide_offset = "none"
+            self.center_x += self.change_x
+            self.center_y += self.change_y
+
+            if abs(self.center_y - self.last_y) >= MOVEMENT_LIMIT_Y and self.moving_y == 1:
+                self.change_y = 0
+                self.update_player_texture("idle")
+                self.last_y = 0
+                self.moving_y = 0
+                if self.bottom <= 0:
+                    self.bottom = 0
+                elif self.top >= SCREEN_HEIGHT:
+                    self.top = SCREEN_HEIGHT
+            if abs(self.center_x - self.last_x) >= MOVEMENT_LIMIT_X and self.moving_x == 1:
+                self.change_x = 0
+                self.update_player_texture("idle")
+                self.last_x = 0
+                self.moving_x = 0
+                if self.left <= 0:
+                    self.left = 0
+                elif self.right >= SCREEN_WIDTH:
+                    self.right = SCREEN_WIDTH
 
     def update_player_texture(self, texture_state):
         if texture_state == "idle":
             self.texture = self.frog_idle_pair[self.texture_direction]
-        if texture_state == "jump":
-            self.texture = self.frog_jump_pair[self.texture_direction]
+        if texture_state == "jump_lr":
+            self.texture = self.frog_jump_lr_pair[self.texture_direction]
+        if texture_state == "jump_c":
+            self.texture = self.frog_jump_c_pair[self.texture_direction]
+        if texture_state == "dead":
+            self.texture = self.frog_dead_pair[self.texture_direction]
 
 
 class GameView(arcade.View):
@@ -586,13 +614,24 @@ class GameView(arcade.View):
 
         # Setup water
         self.water_rect = arcade.create_rectangle_filled(SCREEN_WIDTH*0.5, SCREEN_HEIGHT*0.75, 3000, 600, arcade.color.BLUE)
+        
+        self.water_list = arcade.SpriteList()
+        water_sprite = ":resources:images/tiles/water.png"
+        self.water = arcade.Sprite(water_sprite, SPRITE_SCALING*17)
+        self.water.center_x = SCREEN_WIDTH / 2
+        self.water.center_y = SCREEN_HEIGHT + 35
         #self.water_list.append(self.water_sprite)
 
         # A list of all the land sprites
         # at the moment this is just whatever is not water and not the road.
 
         # Setup road
-        self.road_rect = arcade.create_rectangle_filled(SCREEN_WIDTH*0.5, SCREEN_HEIGHT*0.3, 3000, 400, arcade.color.BLACK)
+        self.road_rect = arcade.create_rectangle_filled(SCREEN_WIDTH*0.5, SCREEN_HEIGHT*0.3+15, 3000, 400, arcade.color.BLACK)
+
+        # Death object list
+        # A list of all the trucks
+        self.death_list = arcade.SpriteList()
+        self.death_list.append(self.water)
 
     def create_turtle(self, index, height_offset, x_min, x_max):
         """ A function that will create a turtle sprite and add it to the turtle list.
@@ -601,7 +640,7 @@ class GameView(arcade.View):
         turtle_sprite = ":resources:images/topdown_tanks/treeBrown_small.png"
         turtle = arcade.Sprite(turtle_sprite, SPRITE_SCALING*2)
         turtle.center_x = SCREEN_WIDTH
-        turtle.center_y = SCREEN_HEIGHT*height_offset
+        turtle.center_y = SCREEN_HEIGHT - height_offset
         turtle.angle = turtle_angle
         turtle.change_x = random.randrange(x_min, x_max)
         turtle.index = index
@@ -614,26 +653,32 @@ class GameView(arcade.View):
         # Adjust odds based on delta-time
         turtle0_odds = int(90 * (1 / 60 * delta_time))
         turtle1_odds = int(120 * (1 / 60 * delta_time))
-        self.turtle_blocking = [False, False]
+        turtle2_odds = int(120 * (1 / 60 * delta_time))
+        self.turtle_blocking = [False, False, False]
         
         for found_turtle in self.turtle_list:
             if found_turtle.right > SCREEN_WIDTH-200:
                 self.turtle_blocking[found_turtle.index] = True
         #print(self.turtle_blocking)
 
-        # Add turtle0
+        # Add turtle 0
         if random.randrange(turtle0_odds+1) == 0:
             if not self.turtle_blocking[0]:
-                self.create_turtle(0, 0.85, 2, 3)
+                self.create_turtle(0, 120, 2, 3)
         
-        # Add turtle1
+        # Add turtle 1
         if random.randrange(turtle1_odds+1) == 0:
             if not self.turtle_blocking[1]:
-                self.create_turtle(1, 0.55, 2, 3)
+                self.create_turtle(1, 260, 2, 3)
+
+        # Add turtle 2
+        if random.randrange(turtle2_odds+1) == 0:
+            if not self.turtle_blocking[2]:
+                self.create_turtle(2, 465, 2, 3)
 
         for turtle in self.turtle_list:
             turtle.center_x -= turtle.change_x
-            if turtle.left > SCREEN_WIDTH:
+            if turtle.right < 0:
                 turtle.remove_from_sprite_lists()
 
     def create_log(self, index, height_offset, x_min, x_max):
@@ -643,7 +688,7 @@ class GameView(arcade.View):
         log_sprite = ":resources:images/tiles/bridgeB.png"
         log = arcade.Sprite(log_sprite, SPRITE_SCALING*2)
         log.center_x = log.left
-        log.center_y = SCREEN_HEIGHT*height_offset
+        log.center_y = SCREEN_HEIGHT - height_offset
         log.angle = log_angle
         log.change_x = random.randrange(x_min, x_max)
         log.index = index
@@ -667,22 +712,20 @@ class GameView(arcade.View):
         # Add log0
         if random.randrange(log0_odds+1) == 0:
             if not self.log_blocking[0]:
-                self.create_log(0, 0.65, 1, 2)
+                self.create_log(0, 140, 1, 2)
         # Add log1
         if random.randrange(log1_odds+1) == 0:
             if not self.log_blocking[1]:
-                self.create_log(1, 0.75, 2, 3)
+                self.create_log(1, 280, 2, 3)
         # Add log2
         if random.randrange(log2_odds+1) == 0:
             if not self.log_blocking[2]:
-                self.create_log(2, 0.95, 4, 5)
-        
+                self.create_log(2, 350, 4, 5)
         
         for log in self.log_list:
             log.center_x += log.change_x
-            if log.right < 0:
+            if log.left > SCREEN_WIDTH:
                 log.remove_from_sprite_lists()
-
 
 
     def on_draw(self):
@@ -692,24 +735,28 @@ class GameView(arcade.View):
         self.clear()
 
         # Draw all the sprites.
-        self.water_rect.draw()
+        #self.water_rect.draw()
         self.road_rect.draw()
+        self.water.draw()
         self.log_list.draw()
         self.turtle_list.draw()
         self.player_list.draw()
 
     def update_player_speed(self):
-        self.player_sprite.update_player_texture("jump")
         if self.up_pressed and not self.down_pressed:
+            self.player_sprite.update_player_texture("jump_c")
             self.player_sprite.moving_y = 1
             self.player_sprite.change_y = MOVEMENT_SPEED
         elif self.down_pressed and not self.up_pressed:
+            self.player_sprite.update_player_texture("jump_c")
             self.player_sprite.moving_y = 1
             self.player_sprite.change_y = -MOVEMENT_SPEED
         if self.left_pressed and not self.right_pressed:
+            self.player_sprite.update_player_texture("jump_lr")
             self.player_sprite.moving_x = 1
             self.player_sprite.change_x = -MOVEMENT_SPEED
         elif self.right_pressed and not self.left_pressed:
+            self.player_sprite.update_player_texture("jump_lr")
             self.player_sprite.moving_x = 1
             self.player_sprite.change_x = MOVEMENT_SPEED
 
@@ -722,14 +769,26 @@ class GameView(arcade.View):
         self.player_list.update()
         self.moving_logs(delta_time)
         self.moving_turtles(delta_time)
+        #print(f"number of logs = {len(self.log_list)}")
+        #print(f"number of turtles = {len(self.turtle_list)}")
+
+        self.player_sprite.landable_collided_sprites = []
+        landable_hit_list = arcade.check_for_collision_with_lists(self.player_sprite, [self.log_list, self.turtle_list])
+        for l_hit in landable_hit_list:
+            #hit.remove_from_sprite_lists()
+            self.player_sprite.landable_collided_sprites.append(l_hit)
+
+        self.player_sprite.death_collided_sprites = []
+        death_hit_list = arcade.check_for_collision_with_list(self.player_sprite, self.death_list)
+        for d_hit in death_hit_list:
+            self.player_sprite.death_collided_sprites.append(d_hit)
 
         if self.controller:
-
             # use bellow to see which button was pressed
             #print(self.controller.buttons)
-
             # controller Up
             if self.controller.y < (DEAD_ZONE*-1) and self.player_sprite.moving_y == 0 and self.controller_dir_reset:
+                print(f"{self.controller.name} - UP")
                 self.up_pressed = True
                 self.player_sprite.last_y = self.player_sprite.center_y
                 self.update_player_speed()
@@ -794,6 +853,9 @@ class GameView(arcade.View):
         if key == arcade.key.ESCAPE:
             menu_view = MenuView()
             self.window.show_view(menu_view)
+        if key == arcade.key.INSERT:
+            for i in self.log_list:
+                print(i.right)
 
     def on_key_release(self, key, modifiers):
         """Called when the user releases a key. """

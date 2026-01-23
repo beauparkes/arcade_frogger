@@ -392,7 +392,7 @@ class MenuView(arcade.View, Controllers):
 
 
     def update_controller_status(self):
-        if self.controllers.has_update == True:
+        if self.controllers.has_update:
 
             # Controller 0
             control_0_status = self.controllers.control_0_status
@@ -473,19 +473,30 @@ class Player(arcade.Sprite):
         self.collide_offset = "none"
         self.death_collided_sprites = []
         self.window = window
+        self.pre_collider = None
 
-    def update(self):
-        # Move the player
-        # Remove these lines if physics engine is moving player.
 
-        def _move():
+    def move(self, direction=None):
+        if direction:
             # check if blocked by unlandable sprite
             self.last_pos = [self.center_x, self.center_y]
             self.collide_offset == "none"
+            self.pre_collider.texture = self.texture
 
-            print(self.landable_collided_sprites)
-            self.set_position(self.center_x, self.center_y + MOVEMENT_LIMIT_Y)
-            unlandable_hit_list = arcade.check_for_collision_with_list(self, self.unlandable_sprites)
+            if direction == "left":
+                self.pre_collider.set_position(self.center_x - MOVEMENT_LIMIT_X, self.center_y)
+                self.pre_collider.texture_direction = 0
+            if direction == "right":
+                self.pre_collider.set_position(self.center_x + MOVEMENT_LIMIT_X, self.center_y)
+                self.pre_collider.texture_direction = 1
+            if direction == "up":
+                self.pre_collider.set_position(self.center_x, self.center_y + MOVEMENT_LIMIT_Y)
+            if direction == "down":
+                self.pre_collider.set_position(self.center_x, self.center_y - MOVEMENT_LIMIT_Y)
+
+            unlandable_hit_list = arcade.check_for_collision_with_list(self.pre_collider, self.unlandable_sprites)
+            print(unlandable_hit_list)
+
             if unlandable_hit_list:
                 print("hit unlandable")
                 #self.landable_collided_sprites = unlandable_hit_list
@@ -498,53 +509,67 @@ class Player(arcade.Sprite):
                 return
             else:
                 self.set_position(self.last_pos[0], self.last_pos[1])
+                if direction == "left":
+                    self.texture_direction = 0
+                    self.change_x = -MOVEMENT_SPEED
+                if direction == "right":
+                    self.texture_direction = 1
+                    self.change_x = MOVEMENT_SPEED
+                if direction == "up":
+                    self.change_y = MOVEMENT_SPEED
+                if direction == "down":
+                    self.change_y = -MOVEMENT_SPEED
                 print("no unlandable")
 
-            print("moving")
-            self.center_x += self.change_x
-            self.center_y += self.change_y
+        print("moving")
+        self.center_x += self.change_x
+        self.center_y += self.change_y
 
-            if abs(self.center_y - self.last_y) >= MOVEMENT_LIMIT_Y and self.moving_y == 1:
-                self.change_y = 0
-                self.update_player_texture("idle")
-                self.last_y = 0
-                self.moving_y = 0
-                if self.bottom <= 0:
-                    self.bottom = 0
-                elif self.top >= SCREEN_HEIGHT:
-                    self.top = SCREEN_HEIGHT
-            if abs(self.center_x - self.last_x) >= MOVEMENT_LIMIT_X and self.moving_x == 1:
-                self.change_x = 0
-                self.update_player_texture("idle")
-                self.last_x = 0
-                self.moving_x = 0
-                if self.left <= 0:
-                    self.left = 0
-                elif self.right >= SCREEN_WIDTH:
-                    self.right = SCREEN_WIDTH
+        if abs(self.center_y - self.last_pos[1]) >= MOVEMENT_LIMIT_Y and self.change_y != 0:
+            self.change_y = 0
+            self.update_player_texture("idle")
+            self.last_y = 0
+            self.moving_y = 0
+            if self.bottom <= 0:
+                self.bottom = 0
+            elif self.top >= SCREEN_HEIGHT:
+                self.top = SCREEN_HEIGHT
+        if abs(self.center_x - self.last_pos[0]) >= MOVEMENT_LIMIT_X and self.change_x != 0:
+            self.change_x = 0
+            self.update_player_texture("idle")
+            self.last_x = 0
+            self.moving_x = 0
+            if self.left <= 0:
+                self.left = 0
+            elif self.right >= SCREEN_WIDTH:
+                self.right = SCREEN_WIDTH
 
-        def _not_moving():
-            # if death return to end game view
-            if self.death_collided_sprites and not self.landable_collided_sprites:
-                self.texture = self.frog_dead_pair[0]
-                end_game = EndGame()
-                self.window.show_view(end_game)
-
-            if not self.landable_collided_sprites:
-                print("not on a landable")
-                self.collide_offset = "none"
-                return
-            print("on a landable")
-            if self.collide_offset == "none":
-                self.collide_offset =  self.center_x - self.landable_collided_sprites[0].center_x
-            else:
-                self.set_position(self.landable_collided_sprites[0].center_x - self.collide_offset, self.center_y)
-            self.last_rest = [self.center_x, self.center_y]
         
-        if self.change_x  == 0 and self.change_y == 0:
-            _not_moving()
+    def not_moving(self):
+        # if death return to end game view
+        if self.death_collided_sprites and not self.landable_collided_sprites:
+            self.texture = self.frog_dead_pair[0]
+            end_game = EndGame()
+            self.window.show_view(end_game)
+
+        if not self.landable_collided_sprites:
+            print("not on a landable")
+            self.collide_offset = "none"
+            return
+        print("on a landable")
+        if self.collide_offset == "none":
+            self.collide_offset =  self.center_x - self.landable_collided_sprites[0].center_x
         else:
-            _move()
+            self.set_position(self.landable_collided_sprites[0].center_x - self.collide_offset, self.center_y)
+        self.last_rest = [self.center_x, self.center_y]
+
+    def update(self):
+        # Move the player
+        # Remove these lines if physics engine is moving player.
+        if self.change_x  == 0 and self.change_y == 0:
+            self.not_moving()
+        else:
+            self.move()
 
 
     def update_player_texture(self, texture_state):
@@ -556,6 +581,15 @@ class Player(arcade.Sprite):
             self.texture = self.frog_jump_c_pair[self.texture_direction]
         if texture_state == "dead":
             self.texture = self.frog_dead_pair[self.texture_direction]
+
+
+class pre_collider(arcade.Sprite):
+    """ Pre collider class """
+    def __init__(self):
+        super().__init__()
+        self.invisible = False
+        self.scale = SPRITE_SCALING
+        self.alpha = 128
 
 
 class GameView(arcade.View):
@@ -627,7 +661,9 @@ class GameView(arcade.View):
         self.player1_sprite = Player(SPRITE_SCALING, self.window)
         self.player1_sprite.center_x = SCREEN_WIDTH/2
         self.player1_sprite.bottom = 0
+        self.player1_sprite.pre_collider = pre_collider()
         self.player_list.append(self.player1_sprite)
+        self.player_list.append(self.player1_sprite.pre_collider)
 
     def level_setup(self):
         """ A function that will setup the frogger game enemies which includes logs, turtles, cars, and trucks.
@@ -790,23 +826,6 @@ class GameView(arcade.View):
         self.turtle_list.draw()
         self.player_list.draw()
 
-    def update_player_speed(self):
-        if self.up_pressed and not self.down_pressed:
-            self.player1_sprite.update_player_texture("jump_c")
-            self.player1_sprite.moving_y = 1
-            self.player1_sprite.change_y = MOVEMENT_SPEED
-        elif self.down_pressed and not self.up_pressed:
-            self.player1_sprite.update_player_texture("jump_c")
-            self.player1_sprite.moving_y = 1
-            self.player1_sprite.change_y = -MOVEMENT_SPEED
-        if self.left_pressed and not self.right_pressed:
-            self.player1_sprite.update_player_texture("jump_lr")
-            self.player1_sprite.moving_x = 1
-            self.player1_sprite.change_x = -MOVEMENT_SPEED
-        elif self.right_pressed and not self.left_pressed:
-            self.player1_sprite.update_player_texture("jump_lr")
-            self.player1_sprite.moving_x = 1
-            self.player1_sprite.change_x = MOVEMENT_SPEED
 
     def on_update(self, delta_time):
         """ Movement and game logic """
@@ -840,28 +859,28 @@ class GameView(arcade.View):
                 print(f"{self.controller.name} - UP")
                 self.up_pressed = True
                 self.player1_sprite.last_y = self.player1_sprite.center_y
-                self.update_player_speed()
+                self.player1_sprite.update_player_speed()
                 self.controller_dir_reset = False
 
             # controller Down
             if self.controller.y > DEAD_ZONE and self.player1_sprite.moving_y == 0 and self.controller_dir_reset:
                 self.down_pressed = True
                 self.player1_sprite.last_y = self.player1_sprite.center_y
-                self.update_player_speed()
+                self.player1_sprite.update_player_speed()
                 self.controller_dir_reset = False
 
             # controller Right
             if self.controller.x > DEAD_ZONE and self.player1_sprite.moving_x == 0 and self.controller_dir_reset:
                 self.right_pressed = True
                 self.player1_sprite.last_x = self.player1_sprite.center_x
-                self.update_player_speed()
+                self.player1_sprite.update_player_speed()
                 self.controller_dir_reset = False
 
             # controller Left
             if self.controller.x < (DEAD_ZONE*-1) and self.player1_sprite.moving_x == 0 and self.controller_dir_reset:
                 self.left_pressed = True
                 self.player1_sprite.last_x = self.player1_sprite.center_x
-                self.update_player_speed()
+                self.player1_sprite.update_player_speed()
                 self.controller_dir_reset = False
 
             # controler dir reset
@@ -883,22 +902,20 @@ class GameView(arcade.View):
 
         if key == arcade.key.UP or key == arcade.key.W:
             self.up_pressed = True
-            self.player1_sprite.last_y = self.player1_sprite.center_y
-            self.update_player_speed()
+            #self.player1_sprite.last_y = self.player1_sprite.center_y
+            self.player1_sprite.move("up")
         elif key == arcade.key.DOWN or key == arcade.key.S:
             self.down_pressed = True
-            self.player1_sprite.last_y = self.player1_sprite.center_y
-            self.update_player_speed()
+            #self.player1_sprite.last_y = self.player1_sprite.center_y
+            self.player1_sprite.move("down")
         elif key == arcade.key.LEFT or key == arcade.key.A:
             self.left_pressed = True
-            self.player1_sprite.last_x = self.player1_sprite.center_x
-            self.player1_sprite.texture_direction = 0
-            self.update_player_speed()
+            #self.player1_sprite.last_x = self.player1_sprite.center_x
+            self.player1_sprite.move("left")
         elif key == arcade.key.RIGHT or key == arcade.key.D:
             self.right_pressed = True
-            self.player1_sprite.last_x = self.player1_sprite.center_x
-            self.player1_sprite.texture_direction = 1
-            self.update_player_speed()
+            #self.player1_sprite.last_x = self.player1_sprite.center_x
+            self.player1_sprite.move("right")
         if key == arcade.key.ESCAPE:
             menu_view = MenuView()
             self.window.show_view(menu_view)

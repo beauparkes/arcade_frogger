@@ -480,27 +480,26 @@ class Player(arcade.Sprite):
         if direction:
             # check if blocked by unlandable sprite
             self.last_pos = [self.center_x, self.center_y]
-            self.collide_offset == "none"
-            self.pre_collider.texture = self.texture
+            self.collide_offset = "none"
 
+            # Temporarily move to new position
             if direction == "left":
-                self.pre_collider.set_position(self.center_x - MOVEMENT_LIMIT_X, self.center_y)
-                self.pre_collider.texture_direction = 0
+                self.set_position(self.center_x - MOVEMENT_LIMIT_X, self.center_y)
+                self.texture_direction = 0
             if direction == "right":
-                self.pre_collider.set_position(self.center_x + MOVEMENT_LIMIT_X, self.center_y)
-                self.pre_collider.texture_direction = 1
+                self.set_position(self.center_x + MOVEMENT_LIMIT_X, self.center_y)
+                self.texture_direction = 1
             if direction == "up":
-                self.pre_collider.set_position(self.center_x, self.center_y + MOVEMENT_LIMIT_Y)
+                self.set_position(self.center_x, self.center_y + MOVEMENT_LIMIT_Y)
             if direction == "down":
-                self.pre_collider.set_position(self.center_x, self.center_y - MOVEMENT_LIMIT_Y)
+                self.set_position(self.center_x, self.center_y - MOVEMENT_LIMIT_Y)
 
-            unlandable_hit_list = arcade.check_for_collision_with_list(self.pre_collider, self.unlandable_sprites)
+            unlandable_hit_list = arcade.check_for_collision_with_list(self, self.unlandable_sprites)
             print(unlandable_hit_list)
 
             if unlandable_hit_list:
                 print("hit unlandable")
-                #self.landable_collided_sprites = unlandable_hit_list
-                #self.set_position(self.last_rest[0], self.last_rest[1])
+                self.set_position(self.last_pos[0], self.last_pos[1])  # Revert position
                 self.change_x = 0
                 self.change_y = 0
                 self.moving_x = 0
@@ -508,12 +507,10 @@ class Player(arcade.Sprite):
                 self.update_player_texture("idle")
                 return
             else:
-                self.set_position(self.last_pos[0], self.last_pos[1])
+                self.set_position(self.last_pos[0], self.last_pos[1])  # Revert to start movement
                 if direction == "left":
-                    self.texture_direction = 0
                     self.change_x = -MOVEMENT_SPEED
                 if direction == "right":
-                    self.texture_direction = 1
                     self.change_x = MOVEMENT_SPEED
                 if direction == "up":
                     self.change_y = MOVEMENT_SPEED
@@ -560,7 +557,7 @@ class Player(arcade.Sprite):
         if self.collide_offset == "none":
             self.collide_offset =  self.center_x - self.landable_collided_sprites[0].center_x
         else:
-            self.set_position(self.landable_collided_sprites[0].center_x - self.collide_offset, self.center_y)
+            self.set_position(self.landable_collided_sprites[0].center_x + self.collide_offset, self.center_y)
         self.last_rest = [self.center_x, self.center_y]
 
     def update(self):
@@ -583,13 +580,13 @@ class Player(arcade.Sprite):
             self.texture = self.frog_dead_pair[self.texture_direction]
 
 
-class pre_collider(arcade.Sprite):
-    """ Pre collider class """
-    def __init__(self):
-        super().__init__()
-        self.invisible = False
-        self.scale = SPRITE_SCALING
-        self.alpha = 128
+# class pre_collider(arcade.Sprite):
+#     """ Pre collider class """
+#     def __init__(self):
+#         super().__init__()
+#         self.invisible = False
+#         self.scale = SPRITE_SCALING
+#         self.alpha = 128
 
 
 class GameView(arcade.View):
@@ -661,9 +658,9 @@ class GameView(arcade.View):
         self.player1_sprite = Player(SPRITE_SCALING, self.window)
         self.player1_sprite.center_x = SCREEN_WIDTH/2
         self.player1_sprite.bottom = 0
-        self.player1_sprite.pre_collider = pre_collider()
+        # self.player1_sprite.pre_collider = pre_collider()
         self.player_list.append(self.player1_sprite)
-        self.player_list.append(self.player1_sprite.pre_collider)
+        # self.player_list.append(self.player1_sprite.pre_collider)
 
     def level_setup(self):
         """ A function that will setup the frogger game enemies which includes logs, turtles, cars, and trucks.

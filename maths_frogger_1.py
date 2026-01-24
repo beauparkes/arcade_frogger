@@ -6,8 +6,8 @@ import random
 
 SCREEN_WIDTH = 1040
 SCREEN_HEIGHT = 1035
-font_title_1 = "Kenney Future"
-font_body_1 = "Segoe Print"
+FONT_TITLE_1 = "Kenney Future"
+FONT_BODY_1 = "Segoe Print"
 SCREEN_TITLE = "Maths Frogger - Deluxe Edition"
 DEFAULT_LINE_HEIGHT = 20
 TITLE_FONT_SIZE = 30
@@ -160,7 +160,7 @@ class MenuView(arcade.View, Controllers):
 
         # Setup menu button layouts
         self.red_style = {
-            "font_name": font_body_1,
+            "font_name": FONT_BODY_1,
             "font_size": DEFAULT_FONT_SIZE,
             "font_color": arcade.color.WHITE,
             "border_width": 5, "border_color": None,
@@ -172,7 +172,7 @@ class MenuView(arcade.View, Controllers):
             "font_color_pressed": arcade.color.RED,
         }
         self.green_style = {
-            "font_name": font_body_1,
+            "font_name": FONT_BODY_1,
             "font_size": DEFAULT_FONT_SIZE,
             "font_color": arcade.color.BLACK_BEAN,
             "border_width": 5, "border_color": None,
@@ -184,7 +184,7 @@ class MenuView(arcade.View, Controllers):
             "font_color_pressed": arcade.color.RED,
         }
         self.status_style = {
-            "font_name": font_title_1,
+            "font_name": FONT_TITLE_1,
             "font_size": DEFAULT_FONT_SIZE,
             "font_color": arcade.color.BLACK_BEAN,
             "border_width": 5, "border_color": None,
@@ -213,7 +213,7 @@ class MenuView(arcade.View, Controllers):
             size_hint=(300, 50),
             align="center",
             font_size=TITLE_FONT_SIZE,
-            font_name=font_title_1,
+            font_name=FONT_TITLE_1,
         )
         # Add title to manager
         self.manager.add(arcade.gui.UIAnchorWidget(
@@ -229,7 +229,7 @@ class MenuView(arcade.View, Controllers):
             size_hint=(300, 50),
             align="center",
             font_size=DEFAULT_FONT_SIZE,
-            font_name=font_title_1,
+            font_name=FONT_TITLE_1,
         )
         # Add player label to layout
         self.player_text_layout.add(player_text.with_space_around(bottom=0))
@@ -254,7 +254,7 @@ class MenuView(arcade.View, Controllers):
             size_hint=(300, 50),
             align="center",
             font_size=DEFAULT_FONT_SIZE,
-            font_name=font_title_1,
+            font_name=FONT_TITLE_1,
         )
         self.mode_text_layout.add(mode_text.with_space_around(bottom=0))
         self.main_layout.add(self.mode_text_layout.with_space_around(bottom=0))
@@ -269,7 +269,7 @@ class MenuView(arcade.View, Controllers):
             size_hint=(300, 50),
             align="center",
             font_size=DEFAULT_FONT_SIZE,
-            font_name=font_title_1,
+            font_name=FONT_TITLE_1,
         )
         # Add difficulty label to layout
         self.difficulty_text_layout.add(difficulty_text.with_space_around(bottom=0))
@@ -320,7 +320,7 @@ class MenuView(arcade.View, Controllers):
             width=500,
             align="center",
             font_size=12,
-            font_name=font_title_1,
+            font_name=FONT_TITLE_1,
             text_color=FONT_COLOUR_RED,
         )
         
@@ -330,7 +330,7 @@ class MenuView(arcade.View, Controllers):
             width=500,
             align="center",
             font_size=12,
-            font_name=font_title_1,
+            font_name=FONT_TITLE_1,
             text_color=FONT_COLOUR_RED,
         )
 
@@ -444,6 +444,7 @@ class MenuView(arcade.View, Controllers):
         game_view = GameView(self.players, self.mode, self.difficulty, self.controllers)
         game_view.player_setup()
         game_view.level_setup()
+        game_view.ui_setup()
         self.window.show_view(game_view)
 
 
@@ -452,10 +453,11 @@ class Player(arcade.Sprite):
     def __init__(self, scale, window):
         super().__init__()
         self.scale = scale
-        self.last_x = 0
-        self.last_y = 0
-        self.moving_x = 0
-        self.moving_y = 0
+        self.moving_x = False
+        self.moving_y = False
+        self.in_motion = False
+        self.destination_x = 0
+        self.destination_y = 0
         self.flipped_v = 0
         frog_idle = ":resources:images/enemies/frog.png"
         frog_jump_lr = ":resources:images/enemies/frog_move.png"
@@ -477,22 +479,54 @@ class Player(arcade.Sprite):
 
 
     def move(self, direction=None):
-        if direction:
+
+        if direction and self.in_motion:
+            return
+        if direction and not self.in_motion:
+            self.in_motion = True
             # check if blocked by unlandable sprite
             self.last_pos = [self.center_x, self.center_y]
             self.collide_offset = "none"
 
             # Temporarily move to new position
             if direction == "left":
-                self.set_position(self.center_x - MOVEMENT_LIMIT_X, self.center_y)
+                if not self.moving_x:
+                    self.destination_x = self.center_x - MOVEMENT_LIMIT_X
+                self.moving_x = True
                 self.texture_direction = 0
+                self.update_player_texture("jump_lr")
+                if self.moving_y:
+                    self.set_position(self.destination_x, self.center_y - MOVEMENT_LIMIT_Y)
+                else:
+                    self.set_position(self.center_x - MOVEMENT_LIMIT_X, self.center_y)
             if direction == "right":
-                self.set_position(self.center_x + MOVEMENT_LIMIT_X, self.center_y)
+                if not self.moving_x:
+                    self.destination_x = self.center_x + MOVEMENT_LIMIT_X
+                self.moving_x = True
                 self.texture_direction = 1
+                self.update_player_texture("jump_lr")
+                if self.moving_y:
+                    self.set_position(self.destination_x, self.center_y - MOVEMENT_LIMIT_Y)
+                else:
+                    self.set_position(self.center_x + MOVEMENT_LIMIT_X, self.center_y)
             if direction == "up":
-                self.set_position(self.center_x, self.center_y + MOVEMENT_LIMIT_Y)
+                if not self.moving_y:
+                    self.destination_y = self.center_y + MOVEMENT_LIMIT_Y
+                self.moving_y = True
+                self.update_player_texture("jump_c")
+                if self.moving_x:
+                    self.set_position(self.destination_x, self.center_y + MOVEMENT_LIMIT_Y)
+                else:
+                    self.set_position(self.center_x, self.center_y + MOVEMENT_LIMIT_Y)
             if direction == "down":
-                self.set_position(self.center_x, self.center_y - MOVEMENT_LIMIT_Y)
+                if not self.moving_y:
+                    self.destination_y = self.center_y - MOVEMENT_LIMIT_Y
+                self.moving_y = True
+                self.update_player_texture("jump_c")
+                if self.moving_x:
+                    self.set_position(self.destination_x, self.center_y - MOVEMENT_LIMIT_Y)
+                else:
+                    self.set_position(self.center_x, self.center_y - MOVEMENT_LIMIT_Y)
 
             unlandable_hit_list = arcade.check_for_collision_with_list(self, self.unlandable_sprites)
             print(unlandable_hit_list)
@@ -502,8 +536,9 @@ class Player(arcade.Sprite):
                 self.set_position(self.last_pos[0], self.last_pos[1])  # Revert position
                 self.change_x = 0
                 self.change_y = 0
-                self.moving_x = 0
-                self.moving_y = 0
+                self.moving_x = False
+                self.moving_y = False
+                self.in_motion = False
                 self.update_player_texture("idle")
                 return
             else:
@@ -518,6 +553,7 @@ class Player(arcade.Sprite):
                     self.change_y = -MOVEMENT_SPEED
                 print("no unlandable")
 
+
         print("moving")
         self.center_x += self.change_x
         self.center_y += self.change_y
@@ -526,7 +562,8 @@ class Player(arcade.Sprite):
             self.change_y = 0
             self.update_player_texture("idle")
             self.last_y = 0
-            self.moving_y = 0
+            self.moving_y = False
+            self.in_motion = False
             if self.bottom <= 0:
                 self.bottom = 0
             elif self.top >= SCREEN_HEIGHT:
@@ -535,7 +572,8 @@ class Player(arcade.Sprite):
             self.change_x = 0
             self.update_player_texture("idle")
             self.last_x = 0
-            self.moving_x = 0
+            self.moving_x = False
+            self.in_motion = False
             if self.left <= 0:
                 self.left = 0
             elif self.right >= SCREEN_WIDTH:
@@ -580,15 +618,6 @@ class Player(arcade.Sprite):
             self.texture = self.frog_dead_pair[self.texture_direction]
 
 
-# class pre_collider(arcade.Sprite):
-#     """ Pre collider class """
-#     def __init__(self):
-#         super().__init__()
-#         self.invisible = False
-#         self.scale = SPRITE_SCALING
-#         self.alpha = 128
-
-
 class GameView(arcade.View):
     """
     Main application class.
@@ -625,6 +654,21 @@ class GameView(arcade.View):
         self.difficulty = difficulty
         self.controllers = controllers
 
+        # Game variables
+        self.player1_score = 0
+        self.player2_score = 0
+        self.player1_lives = 3
+        self.player2_lives = 3
+        self.value1 = random.randint(1,10)
+        self.value2 = random.randint(1,10)
+        self.operator = random.choice(['+', '-', '*'])
+        self.answer = eval(f"{self.value1} {self.operator} {self.value2}")
+        self.fake_answer1 = self.answer + random.choice([-3, -2, -1, 1, 2, 3])
+        self.fake_answer2 = self.answer + random.choice([-3, -2, -1, 1, 2, 3])
+        self.fake_answer3 = self.answer + random.choice([-3, -2, -1, 1, 2, 3])
+        self.possible_answers = [self.answer, self.fake_answer1, self.fake_answer2, self.fake_answer3]
+        random.shuffle(self.possible_answers)
+
         # Get list of game controllers that are available
         controllers = arcade.get_game_controllers()
 
@@ -648,6 +692,12 @@ class GameView(arcade.View):
             print("No controllers found")
             self.controller = None
 
+        # Set up the UI Manager
+        self.manager = arcade.gui.UIManager()
+        self.manager.enable()
+        self.ui_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
+
+
     def player_setup(self):
         """ Set up the game and initialize the variables. """
 
@@ -657,10 +707,8 @@ class GameView(arcade.View):
         # Set up the player
         self.player1_sprite = Player(SPRITE_SCALING, self.window)
         self.player1_sprite.center_x = SCREEN_WIDTH/2
-        self.player1_sprite.bottom = 0
-        # self.player1_sprite.pre_collider = pre_collider()
+        self.player1_sprite.bottom =  MOVEMENT_LIMIT_Y + 5
         self.player_list.append(self.player1_sprite)
-        # self.player_list.append(self.player1_sprite.pre_collider)
 
     def level_setup(self):
         """ A function that will setup the frogger game enemies which includes logs, turtles, cars, and trucks.
@@ -703,6 +751,17 @@ class GameView(arcade.View):
             offset = 280
             offsets = [-offset, 0, offset]
             self.create_seperator(index, 32, offsets[index])
+
+    def ui_setup(self):
+        """ A function that will setup the frogger game user interface which includes score, time, and lives.
+
+        """
+        # Create a widget to hold the main_layout widget, that will center the buttons
+        self.manager.add(arcade.gui.UIAnchorWidget(
+            anchor_x="center_x",
+            anchor_y="center_y",
+            child=self.ui_layout)
+        )
 
 
     def create_seperator(self, index, height_offset, x_offset):
@@ -823,6 +882,34 @@ class GameView(arcade.View):
         self.turtle_list.draw()
         self.player_list.draw()
 
+        self.manager.draw()
+        arcade.draw_text(
+            f"Solve: {self.value1} {self.operator} {self.value2}",
+            start_x=0, start_y= 0,
+            width=self.window.width,
+            font_size=40,
+            align="center",
+            color=arcade.color.BLACK
+        )
+
+        arcade.draw_text(
+            f"P1 Score: {self.player1_score} Lives: {self.player1_lives}",
+            start_x=-400, start_y= 0,
+            width=self.window.width,
+            font_size=20,
+            align="center",
+            color=arcade.color.BLACK
+        )
+
+        arcade.draw_text(
+            f"P2 Score: {self.player2_score} Lives: {self.player2_lives}",
+            start_x=400, start_y= 0,
+            width=self.window.width,
+            font_size=20,
+            align="center",
+            color=arcade.color.BLACK
+        )
+
 
     def on_update(self, delta_time):
         """ Movement and game logic """
@@ -852,7 +939,7 @@ class GameView(arcade.View):
             # use bellow to see which button was pressed
             #print(self.controller.buttons)
             # controller Up
-            if self.controller.y < (DEAD_ZONE*-1) and self.player1_sprite.moving_y == 0 and self.controller_dir_reset:
+            if self.controller.y < (DEAD_ZONE*-1) and not self.player1_sprite.moving_y and self.controller_dir_reset:
                 print(f"{self.controller.name} - UP")
                 self.up_pressed = True
                 self.player1_sprite.last_y = self.player1_sprite.center_y
@@ -860,21 +947,21 @@ class GameView(arcade.View):
                 self.controller_dir_reset = False
 
             # controller Down
-            if self.controller.y > DEAD_ZONE and self.player1_sprite.moving_y == 0 and self.controller_dir_reset:
+            if self.controller.y > DEAD_ZONE and not self.player1_sprite.moving_y and self.controller_dir_reset:
                 self.down_pressed = True
                 self.player1_sprite.last_y = self.player1_sprite.center_y
                 self.player1_sprite.update_player_speed()
                 self.controller_dir_reset = False
 
             # controller Right
-            if self.controller.x > DEAD_ZONE and self.player1_sprite.moving_x == 0 and self.controller_dir_reset:
+            if self.controller.x > DEAD_ZONE and not self.player1_sprite.moving_x and self.controller_dir_reset:
                 self.right_pressed = True
                 self.player1_sprite.last_x = self.player1_sprite.center_x
                 self.player1_sprite.update_player_speed()
                 self.controller_dir_reset = False
 
             # controller Left
-            if self.controller.x < (DEAD_ZONE*-1) and self.player1_sprite.moving_x == 0 and self.controller_dir_reset:
+            if self.controller.x < (DEAD_ZONE*-1) and not self.player1_sprite.moving_x and self.controller_dir_reset:
                 self.left_pressed = True
                 self.player1_sprite.last_x = self.player1_sprite.center_x
                 self.player1_sprite.update_player_speed()
@@ -957,7 +1044,7 @@ class EndGame(arcade.View):
             size_hint=(300, 50),
             align="center",
             font_size=TITLE_FONT_SIZE,
-            font_name=font_title_1,
+            font_name=FONT_TITLE_1,
         )
         # Add title to manager
         self.manager.add(arcade.gui.UIAnchorWidget(
@@ -973,12 +1060,12 @@ class EndGame(arcade.View):
             size_hint=(300, 50),
             align="center",
             font_size=TITLE_FONT_SIZE + 30,
-            font_name=font_title_1,
+            font_name=FONT_TITLE_1,
         )
 
         # Setup menu button layouts
         self.red_style = {
-            "font_name": font_body_1,
+            "font_name": FONT_BODY_1,
             "font_size": DEFAULT_FONT_SIZE,
             "font_color": arcade.color.WHITE,
             "border_width": 5, "border_color": None,
@@ -990,7 +1077,7 @@ class EndGame(arcade.View):
             "font_color_pressed": arcade.color.RED,
         }
         self.green_style = {
-            "font_name": font_body_1,
+            "font_name": FONT_BODY_1,
             "font_size": DEFAULT_FONT_SIZE,
             "font_color": arcade.color.BLACK,
             "border_width": 5, "border_color": None,
@@ -1045,6 +1132,9 @@ class EndGame(arcade.View):
 
         if key == arcade.key.ESCAPE:
             self.main_screen()
+
+        if key == arcade.key.ENTER or key == arcade.key.RETURN:
+            self.try_again(None)
 
     def main_screen_button(self, event):
         self.main_screen()

@@ -480,6 +480,7 @@ class Player(arcade.Sprite):
         self.last_rest = [0,0]
         self.landable_collided_sprites = arcade.SpriteList()
         self.unlandable_sprites = arcade.SpriteList()
+        self.death_sprites = arcade.SpriteList()
         self.collide_offset = "none"
         self.death_collided_sprites = []
         self.window = window
@@ -490,10 +491,12 @@ class Player(arcade.Sprite):
         self.answer = None
         self.answer_texts = None
         self.answer_list = None
+        self.level = None
+        self.god_mode = False
 
 
     def move(self, direction=None):
-
+        print("moving")
         if direction and self.in_motion:
             return
         if direction and not self.in_motion:
@@ -543,10 +546,10 @@ class Player(arcade.Sprite):
                     self.set_position(self.center_x, self.center_y - MOVEMENT_LIMIT_Y)
 
             unlandable_hit_list = arcade.check_for_collision_with_list(self, self.unlandable_sprites)
-            print(unlandable_hit_list)
+            #print(unlandable_hit_list)
 
             if unlandable_hit_list:
-                print("hit unlandable")
+                #print("hit unlandable")
                 self.set_position(self.last_pos[0], self.last_pos[1])  # Revert position
                 self.change_x = 0
                 self.change_y = 0
@@ -565,10 +568,10 @@ class Player(arcade.Sprite):
                     self.change_y = MOVEMENT_SPEED
                 if direction == "down":
                     self.change_y = -MOVEMENT_SPEED
-                print("no unlandable")
+                #print("no unlandable")
 
 
-        print("moving")
+        #print("moving")
         self.center_x += self.change_x
         self.center_y += self.change_y
 
@@ -595,15 +598,21 @@ class Player(arcade.Sprite):
 
         
     def not_moving(self):
-        # if death return to end game view
-        print(self.answer)
         print("not moving")
-        if self.death_collided_sprites and not self.landable_collided_sprites:
-            #self.texture = self.frog_dead_pair[0]
-            self.center_x = SCREEN_WIDTH / 2
-            self.bottom =  MOVEMENT_LIMIT_Y -5
-            self.lives -= 1
-            return
+        self.landable_collided_sprites = []
+        landable_hit_list = arcade.check_for_collision_with_list(self, self.level.log_list) + arcade.check_for_collision_with_list(self, self.level.turtle_list)
+        for l_hit in landable_hit_list:
+            self.landable_collided_sprites.append(l_hit)
+        if not self.god_mode:
+            death_hit_list = arcade.check_for_collision_with_list(self, self.level.death_list)
+            if death_hit_list and not self.landable_collided_sprites:
+                for d_hit in death_hit_list:
+                    self.death_collided_sprites.append(d_hit)
+                    print("Landed on death sprite")
+                    self.center_x = SCREEN_WIDTH / 2
+                    self.bottom =  MOVEMENT_LIMIT_Y + 5
+                    self.lives -= 1
+                    return
         if self.lives <= 0:
             print(self.lives)
             print("game over")
@@ -612,10 +621,13 @@ class Player(arcade.Sprite):
             return
 
         answer_hit = arcade.check_for_collision_with_list(self, self.answer_list)
-        for a_hit in answer_hit:
-            if a_hit.value == self.answer:
+        for answer_hit in answer_hit:
+            print(f"Answer Hit: {answer_hit.value}")
+            print(f"Correct Answer: {self.answer}")
+            if answer_hit.value == self.answer:
+                print("Correct Answer!")
                 self.center_x = SCREEN_WIDTH / 2
-                self.bottom =  MOVEMENT_LIMIT_Y -5
+                self.bottom =  MOVEMENT_LIMIT_Y + 5
                 self.score += 10
                 print("Correct Answer!")
                 # Generate new question
@@ -638,7 +650,7 @@ class Player(arcade.Sprite):
                 self.game_view.game.operator = self.operator
             else:
                 self.center_x = SCREEN_WIDTH / 2
-                self.bottom =  MOVEMENT_LIMIT_Y -5
+                self.bottom =  MOVEMENT_LIMIT_Y + 5
                 self.lives -= 1
                 print("Wrong Answer!")
                 if self.lives <= 0:
@@ -646,13 +658,13 @@ class Player(arcade.Sprite):
                     self.window.show_view(end_game)
                 else:
                     self.center_x = SCREEN_WIDTH / 2
-                    self.bottom =  MOVEMENT_LIMIT_Y -5
+                    self.bottom =  MOVEMENT_LIMIT_Y + 5
 
         if not self.landable_collided_sprites:
-            print("not on a landable")
+            #print("not on a landable")
             self.collide_offset = "none"
             return
-        print("on a landable")
+        #print("on a landable")
         if self.collide_offset == "none":
             self.collide_offset =  self.center_x - self.landable_collided_sprites[0].center_x
         else:
@@ -887,6 +899,7 @@ class Game:
         self.controllers = controllers
         self.level = Level()
         self.player = Player(SPRITE_SCALING, None)  # Window will be set later
+        self.player.level = self.level
         self.ui = UI(self.player)
         self.player_list = arcade.SpriteList()
         self.player_list.append(self.player)
@@ -917,16 +930,7 @@ class Game:
     def update(self, delta_time):
         self.player_list.update()
         self.level.update(delta_time)
-        self.player.landable_collided_sprites = []
-        landable_hit_list = arcade.check_for_collision_with_list(self.player, self.level.log_list) + arcade.check_for_collision_with_list(self.player, self.level.turtle_list)
-        for l_hit in landable_hit_list:
-            self.player.landable_collided_sprites.append(l_hit)
 
-        if not self.god_mode:
-            self.player.death_collided_sprites = []
-            death_hit_list = arcade.check_for_collision_with_list(self.player, self.level.death_list)
-            for d_hit in death_hit_list:
-                self.player.death_collided_sprites.append(d_hit)
 
     def draw(self):
         self.level.road_rect.draw()
@@ -1094,6 +1098,7 @@ class GameView(arcade.View):
             self.window.show_view(end_game)
         if key == arcade.key.G and modifiers == arcade.key.MOD_SHIFT:
             self.game.god_mode = not self.game.god_mode
+            self.player.god_mode = self.game.god_mode
             if self.game.god_mode:
                 print("GOD MODE ON~")
                 self.game.player.color = arcade.color.GOLD

@@ -1,0 +1,32 @@
+import arcade
+
+# Screen settings
+SCREEN_WIDTH = 1040
+SCREEN_HEIGHT = 1035
+SCREEN_TITLE = "Maths Frogger - Deluxe Edition"
+
+# Font settings
+FONT_TITLE_1 = "Kenney Future"
+FONT_BODY_1 = "Segoe Print"
+DEFAULT_LINE_HEIGHT = 20
+TITLE_FONT_SIZE = 30
+DEFAULT_FONT_SIZE = 20
+
+# Colors
+FONT_COLOUR_GREEN = [0, 255, 50, 255]
+FONT_COLOUR_RED = [255, 55, 0, 255]
+
+# Sprite settings
+SPRITE_SCALING = 0.5
+STARTING_LIVES = 100
+
+# Movement settings
+MOVEMENT_SPEED = 10
+MOVEMENT_LIMIT_X = (SCREEN_WIDTH / 12) - 10
+MOVEMENT_LIMIT_Y = (SCREEN_HEIGHT + 0.5) / 16
+DEAD_ZONE = 0.5
+
+# Background colors
+BACKGROUND_COLOR = arcade.color.AMAZON
+MENU_BACKGROUND_COLOR = arcade.color.BLACK
+END_GAME_BACKGROUND_COLOR = arcade.color.BLACK

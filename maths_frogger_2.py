@@ -2,26 +2,14 @@ import arcade
 import arcade.gui
 import pyglet
 import random
+from config import (
+    SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, FONT_TITLE_1, FONT_BODY_1,
+    DEFAULT_LINE_HEIGHT, TITLE_FONT_SIZE, DEFAULT_FONT_SIZE, FONT_COLOUR_GREEN,
+    FONT_COLOUR_RED, SPRITE_SCALING, STARTING_LIVES, MOVEMENT_SPEED,
+    MOVEMENT_LIMIT_X, MOVEMENT_LIMIT_Y, DEAD_ZONE, BACKGROUND_COLOR,
+    MENU_BACKGROUND_COLOR, END_GAME_BACKGROUND_COLOR
+)
 
-
-SCREEN_WIDTH = 1040
-SCREEN_HEIGHT = 1035
-FONT_TITLE_1 = "Kenney Future"
-FONT_BODY_1 = "Segoe Print"
-SCREEN_TITLE = "Maths Frogger - Deluxe Edition"
-DEFAULT_LINE_HEIGHT = 20
-TITLE_FONT_SIZE = 30
-DEFAULT_FONT_SIZE = 20
-FONT_COLOUR_GREEN = [0,255,50,255]
-FONT_COLOUR_RED = [255,55,0,255]
-SPRITE_SCALING = 0.5
-STARTING_LIVES = 100
-
-
-MOVEMENT_SPEED = 10
-MOVEMENT_LIMIT_X = (SCREEN_WIDTH  / 12) - 10
-MOVEMENT_LIMIT_Y = (SCREEN_HEIGHT + 0.5) / 16
-DEAD_ZONE = 0.5
 
 def load_texture_pair(filename):
     """
@@ -33,7 +21,11 @@ def load_texture_pair(filename):
     ]
 
 
-class Controllers():
+class Controllers:
+    """
+    Manages game controllers using pyglet. Handles connection, disconnection,
+    and status updates for up to two controllers.
+    """
     def __init__(self):
         print("controllers initialised")
         self.controller_manager = pyglet.input.ControllerManager()
@@ -100,7 +92,10 @@ class Controllers():
 
 
 class DebugWindow(arcade.Window):
-    """ Debug window, currently not well implimented."""
+    """
+    Debug window for development purposes. Currently not well implemented.
+    Provides a smaller window for debugging the game.
+    """
     def __init__(self):
         super().__init__(
             int(SCREEN_WIDTH/2),
@@ -114,7 +109,9 @@ class DebugWindow(arcade.Window):
 
 
 class MainWindow(arcade.Window):
-    """ Main window."""
+    """
+    Main application window. Handles the primary game display and debug window toggling.
+    """
     def __init__(self, debug):
         super().__init__(
             SCREEN_WIDTH,
@@ -144,7 +141,10 @@ class MainWindow(arcade.Window):
 
 
 class MenuView(arcade.View, Controllers):
-    """Class that manages the 'menu' view."""
+    """
+    Manages the main menu view. Handles user interface for selecting game options
+    like players, mode, difficulty, and starting the game. Integrates controller support.
+    """
     def __init__(self):
 
         # Call the parent class initializer
@@ -157,7 +157,7 @@ class MenuView(arcade.View, Controllers):
         self.controllers = Controllers()
 
         # Setup base background colour
-        arcade.set_background_color(arcade.color.BLACK)
+        arcade.set_background_color(MENU_BACKGROUND_COLOR)
 
         # Setup menu button layouts
         self.red_style = {
@@ -443,9 +443,7 @@ class MenuView(arcade.View, Controllers):
 
     def startGame(self, event):
         game_view = GameView(self.players, self.mode, self.difficulty, self.controllers)
-        game_view.player_setup()
-        game_view.level_setup()
-        game_view.ui_setup()
+        game_view.setup()
         self.window.show_view(game_view)
 
     def on_key_press(self, key, modifiers):
@@ -456,7 +454,10 @@ class MenuView(arcade.View, Controllers):
 
 
 class Player(arcade.Sprite):
-    """ Player class """
+    """
+    Represents the player character (frog). Handles movement, collision detection,
+    scoring, lives, and player-specific game logic.
+    """
     def __init__(self, scale, window):
         super().__init__()
         self.scale = scale
@@ -673,127 +674,26 @@ class Player(arcade.Sprite):
             self.texture = self.frog_dead_pair[self.texture_direction]
 
 
-class GameView(arcade.View):
+class Level:
     """
-    Main application class.
-
+    Manages all game level elements, including sprite lists for logs, turtles,
+    cars, separators, death zones, and answers. Handles level setup and updates.
     """
-    def __init__(self, players, mode, difficulty, controllers):
-        """
-        Initializer
-        
-        """
-        # Call the parent class initializer
-        super().__init__()
-
-        # Variables that will hold sprite lists
-        self.player_list = None
-
-        # Set up the player info
-        self.player1_sprite = None
-        self.god_mode = False
-
-        # Track the current state of what key is pressed
-        self.left_pressed = False
-        self.right_pressed = False
-        self.up_pressed = False
-        self.down_pressed = False
-        self.controller_dir_reset = True
-
-        # Set the background color
-        arcade.set_background_color(arcade.color.AMAZON)
-
-        # menu class varaibles
-        self.players = players
-        self.mode = mode
-        self.difficulty = difficulty
-        self.controllers = controllers
-
-        # Game variables
-        #self.player1_score = 0
-        #self.player2_score = 0
-        #self.player1_lives = STARTING_LIVES
-        #self.player2_lives = STARTING_LIVES
-        self.value1 = random.randint(1,10)
-        self.value2 = random.randint(1,10)
-        self.operator = random.choice(['+', '-', '*'])
-        self.answer = eval(f"{self.value1} {self.operator} {self.value2}")
-        self.fake_answer1 = self.answer + random.choice([-3, -2, -1, 1, 2, 3])
-        self.fake_answer2 = self.answer + random.choice([-3, -2, -1, 1, 2, 3])
-        self.fake_answer3 = self.answer + random.choice([-3, -2, -1, 1, 2, 3])
-        self.possible_answers = [self.answer, self.fake_answer1, self.fake_answer2, self.fake_answer3]
-        random.shuffle(self.possible_answers)
-
-        # Get list of game controllers that are available
-        controllers = arcade.get_game_controllers()
-
-        # If we have any...
-        if controllers:
-            # Grab the first one in  the list
-            self.controller = controllers[0]
-
-            # Open it for input
-            self.controller.open()
-
-            # Push this object as a handler for controller events.
-            # Required for the on_joy* events to be called.
-            self.controller.push_handlers(self)
-            #print("Controllers were found")
-            #print(dir(self.controller))
-            #print(self.controller.button_controls)
-            #print(self.controller.buttons)
-        else:
-            # Handle if there are no controllers.
-            print("No controllers found")
-            self.controller = None
-
-        # Set up the UI Manager
-        self.manager = arcade.gui.UIManager()
-        self.manager.enable()
-        self.ui_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
-
-
-    def player_setup(self):
-        """ Set up the game and initialize the variables. """
-
-        # Sprite lists
-        self.player_list = arcade.SpriteList()
-
-        # Set up the player
-        self.player1_sprite = Player(SPRITE_SCALING, self.window)
-        self.player1_sprite.center_x = SCREEN_WIDTH / 2
-        self.player1_sprite.bottom =  MOVEMENT_LIMIT_Y + 5
-        self.player_list.append(self.player1_sprite)
-
-    def level_setup(self):
-        """ A function that will setup the frogger game enemies which includes logs, turtles, cars, and trucks.
-
-        """
-        # A list of all the logs
+    def __init__(self):
         self.log_list = arcade.SpriteList()
-
-        # A list of all the turtles
         self.turtle_list = arcade.SpriteList()
-
-        # A list of all the cars
         self.car_list = arcade.SpriteList()
-
-        # A list of all the trucks
         self.truck_list = arcade.SpriteList()
-
-        # A list of separator sprites
         self.separator_list = arcade.SpriteList()
-
-        # A list of death sprites
         self.death_list = arcade.SpriteList()
-
-        # A list for answer sprites
         self.answer_list = arcade.SpriteList()
-
-        # A list for answer texts
         self.answer_texts = []
+        self.land_rect = None
+        self.water = None
+        self.road_rect = None
+        self.setup()
 
-
+    def setup(self):
         # Setup land
         self.land_rect = arcade.create_rectangle_filled(SCREEN_WIDTH*0.5, SCREEN_HEIGHT*0.75, 3000, 600, arcade.color.GREEN)
         
@@ -813,21 +713,6 @@ class GameView(arcade.View):
             offsets = [-offset, 0, offset]
             self.create_seperator(index, 32, offsets[index])
 
-        # Setup answers
-        self.create_answers()
-
-    def ui_setup(self):
-        """ A function that will setup the frogger game user interface which includes score, time, and lives.
-
-        """
-        # Create a widget to hold the main_layout widget, that will center the buttons
-        self.manager.add(arcade.gui.UIAnchorWidget(
-            anchor_x="center_x",
-            anchor_y="center_y",
-            child=self.ui_layout)
-        )
-
-
     def create_seperator(self, index, height_offset, x_offset):
         separator_sprite = ":resources:images/topdown_tanks/tileSand2.png"
         separator = arcade.Sprite(filename=separator_sprite, scale=SPRITE_SCALING*2, image_width=64, image_height=64)
@@ -835,7 +720,6 @@ class GameView(arcade.View):
         separator.center_y = SCREEN_HEIGHT - height_offset
         separator.index = index
         self.separator_list.append(separator)
-        self.player1_sprite.unlandable_sprites.append(separator)
 
     def create_turtle(self, index, height_offset, x_min, x_max):
         """ A function that will create a turtle sprite and add it to the turtle list.
@@ -932,27 +816,21 @@ class GameView(arcade.View):
                 log.remove_from_sprite_lists()
     
 
-    def create_answers(self):
+    def create_answers(self, possible_answers):
         """ A function that will create answer sprites and add them to the answer list.
         """
         for i in range(4):
-            # answer = arcade.Sprite(answer_sprite, SPRITE_SCALING*2)
-
-            # answer.value = self.possible_answers[i]
-            # self.answer_list.append(answer)
-            print(self.possible_answers)
-
             answer_sprite = ":resources:images/tiles/boxCrate.png"  # Use a dummy texture
             answer = arcade.Sprite(answer_sprite, scale=SPRITE_SCALING)
             answer.center_x = 100 + (280 * i)
             answer.center_y = SCREEN_HEIGHT - 30
             answer.alpha = 0  # Make invisible
-            answer.value = self.possible_answers[i]
+            answer.value = possible_answers[i]
             self.answer_list.append(answer)
 
             # Also create the text for drawing
             text = arcade.Text(
-                str(self.possible_answers[i]), 
+                str(possible_answers[i]), 
                 start_x = 100 + (280 * i),
                 start_y = SCREEN_HEIGHT - 30,
                 color=arcade.color.WHITE, 
@@ -962,10 +840,175 @@ class GameView(arcade.View):
                 anchor_y="center"  # Center the text vertically
             )
             self.answer_texts.append(text)
-        self.player1_sprite.answer_list = self.answer_list
-        self.player1_sprite.answer = self.answer
-        self.player1_sprite.answer_texts = self.answer_texts
 
+    def update(self, delta_time):
+        self.moving_logs(delta_time)
+        self.moving_turtles(delta_time)
+
+
+class UI:
+    """
+    Manages user interface elements, including GUI components and layout.
+    Currently minimal but designed for extensibility.
+    """
+    def __init__(self, player):
+        self.player = player
+        self.manager = arcade.gui.UIManager()
+        self.manager.enable()
+        self.ui_layout = arcade.gui.UIBoxLayout(vertical=False, space_between=10)
+        self.setup()
+
+    def setup(self):
+        # Create a widget to hold the main_layout widget, that will center the buttons
+        self.manager.add(arcade.gui.UIAnchorWidget(
+            anchor_x="center_x",
+            anchor_y="center_y",
+            child=self.ui_layout)
+        )
+
+    def draw(self):
+        self.manager.draw()
+
+
+class Game:
+    """
+    Central manager for game state. Orchestrates level, player, UI, and game logic,
+    including collisions, updates, and scoring.
+    """
+    def __init__(self, players, mode, difficulty, controllers):
+        self.players = players
+        self.mode = mode
+        self.difficulty = difficulty
+        self.controllers = controllers
+        self.level = Level()
+        self.player = Player(SPRITE_SCALING, None)  # Window will be set later
+        self.ui = UI(self.player)
+        self.player_list = arcade.SpriteList()
+        self.player_list.append(self.player)
+        self.god_mode = False
+        self.value1 = random.randint(1,10)
+        self.value2 = random.randint(1,10)
+        self.operator = random.choice(['+', '-', '*'])
+        self.answer = eval(f"{self.value1} {self.operator} {self.value2}")
+        self.fake_answer1 = self.answer + random.choice([-3, -2, -1, 1, 2, 3])
+        self.fake_answer2 = self.answer + random.choice([-3, -2, -1, 1, 2, 3])
+        self.fake_answer3 = self.answer + random.choice([-3, -2, -1, 1, 2, 3])
+        self.possible_answers = [self.answer, self.fake_answer1, self.fake_answer2, self.fake_answer3]
+        random.shuffle(self.possible_answers)
+        self.setup_game()
+
+    def setup_game(self):
+        self.player.center_x = SCREEN_WIDTH / 2
+        self.player.bottom = MOVEMENT_LIMIT_Y + 5
+        self.player.answer_list = self.level.answer_list
+        self.player.answer = self.answer
+        self.player.answer_texts = self.level.answer_texts
+        self.level.create_answers(self.possible_answers)
+        for i in range(4):
+            self.level.answer_texts[i].text = str(self.possible_answers[i])
+            self.level.answer_list[i].value = self.possible_answers[i]
+        self.player.unlandable_sprites = self.level.separator_list
+
+    def update(self, delta_time):
+        self.player_list.update()
+        self.level.update(delta_time)
+        self.player.landable_collided_sprites = []
+        landable_hit_list = arcade.check_for_collision_with_list(self.player, self.level.log_list) + arcade.check_for_collision_with_list(self.player, self.level.turtle_list)
+        for l_hit in landable_hit_list:
+            self.player.landable_collided_sprites.append(l_hit)
+
+        if not self.god_mode:
+            self.player.death_collided_sprites = []
+            death_hit_list = arcade.check_for_collision_with_list(self.player, self.level.death_list)
+            for d_hit in death_hit_list:
+                self.player.death_collided_sprites.append(d_hit)
+
+    def draw(self):
+        self.level.road_rect.draw()
+        self.level.water.draw()
+        self.level.separator_list.draw()
+        self.level.log_list.draw()
+        self.level.turtle_list.draw()
+        self.player_list.draw()
+        self.level.answer_list.draw()
+        for text in self.level.answer_texts:
+            text.draw()
+        self.ui.draw()
+        arcade.draw_text(
+            f"Solve: {self.value1} {self.operator} {self.value2}",
+            start_x=0, start_y= 0,
+            width=SCREEN_WIDTH,
+            font_size=40,
+            align="center",
+            color=arcade.color.BLACK
+        )
+        arcade.draw_text(
+            f"P1 Score: {self.player.score} Lives: {self.player.lives}",
+            start_x=-380, start_y= 0,
+            width=SCREEN_WIDTH,
+            font_size=20,
+            align="center",
+            color=arcade.color.BLACK
+        )
+
+
+class GameView(arcade.View):
+    """
+    Main game view. Handles drawing, input, and delegates game logic to the Game instance.
+    Manages user interactions and rendering.
+    """
+    def __init__(self, players, mode, difficulty, controllers):
+        """
+        Initializer
+        
+        """
+        # Call the parent class initializer
+        super().__init__()
+
+        # Set the background color
+        arcade.set_background_color(BACKGROUND_COLOR)
+
+        # menu class varaibles
+        self.players = players
+        self.mode = mode
+        self.difficulty = difficulty
+        self.controllers = controllers
+
+        # Track the current state of what key is pressed
+        self.left_pressed = False
+        self.right_pressed = False
+        self.up_pressed = False
+        self.down_pressed = False
+        self.controller_dir_reset = True
+
+        # Get list of game controllers that are available
+        controllers = arcade.get_game_controllers()
+
+        # If we have any...
+        if controllers:
+            # Grab the first one in  the list
+            self.controller = controllers[0]
+
+            # Open it for input
+            self.controller.open()
+
+            # Push this object as a handler for controller events.
+            # Required for the on_joy* events to be called.
+            self.controller.push_handlers(self)
+            #print("Controllers were found")
+            #print(dir(self.controller))
+            #print(self.controller.button_controls)
+            #print(self.controller.buttons)
+        else:
+            # Handle if there are no controllers.
+            print("No controllers found")
+            self.controller = None
+
+        self.game = None
+
+    def setup(self):
+        self.game = Game(self.players, self.mode, self.difficulty, self.controllers)
+        self.game.player.window = self.window
 
     def on_draw(self):
         """ Render the screen. """
@@ -973,102 +1016,39 @@ class GameView(arcade.View):
         # Clear the screen
         self.clear()
 
-        # Draw all the sprites.
-        self.road_rect.draw()
-        self.water.draw()
-        self.separator_list.draw()
-        self.log_list.draw()
-        self.turtle_list.draw()
-        self.player_list.draw()
-        self.answer_list.draw()
-        for text in self.answer_texts:
-            text.draw()
-
-        self.manager.draw()
-        arcade.draw_text(
-            f"Solve: {self.value1} {self.operator} {self.value2}",
-            start_x=0, start_y= 0,
-            width=self.window.width,
-            font_size=40,
-            align="center",
-            color=arcade.color.BLACK
-        )
-
-        arcade.draw_text(
-            f"P1 Score: {self.player1_sprite.score} Lives: {self.player1_sprite.lives}",
-            start_x=-380, start_y= 0,
-            width=self.window.width,
-            font_size=20,
-            align="center",
-            color=arcade.color.BLACK
-        )
-
-
-        # arcade.draw_text(
-        #     f"P2 Score: {self.player2_sprite.score} Lives: {self.player2_sprite.lives}",
-        #     start_x=380, start_y= 0,
-        #     width=self.window.width,
-        #     font_size=20,
-        #     align="center",
-        #     color=arcade.color.BLACK
-        # )
-
+        self.game.draw()
 
     def on_update(self, delta_time):
         """ Movement and game logic """
 
-        # Call update to move the sprite
-        # If using a physics engine, call update player to rely on physics engine
-        # for movement, and call physics engine here.
-        self.player_list.update()
-        self.moving_logs(delta_time)
-        self.moving_turtles(delta_time)
-        #print(f"number of logs = {len(self.log_list)}")
-        #print(f"number of turtles = {len(self.turtle_list)}")
-
-        self.player1_sprite.landable_collided_sprites = []
-        landable_hit_list = arcade.check_for_collision_with_list(self.player1_sprite, self.log_list) + arcade.check_for_collision_with_list(self.player1_sprite, self.turtle_list)
-        for l_hit in landable_hit_list:
-            #hit.remove_from_sprite_lists()
-            self.player1_sprite.landable_collided_sprites.append(l_hit)
-
-        if not self.god_mode:
-            self.player1_sprite.death_collided_sprites = []
-            death_hit_list = arcade.check_for_collision_with_list(self.player1_sprite, self.death_list)
-            for d_hit in death_hit_list:
-                self.player1_sprite.death_collided_sprites.append(d_hit)
-
+        self.game.update(delta_time)
 
         if self.controller:
             # use bellow to see which button was pressed
             #print(self.controller.buttons)
             # controller Up
-            if self.controller.y < (DEAD_ZONE*-1) and not self.player1_sprite.moving_y and self.controller_dir_reset:
+            if self.controller.y < (DEAD_ZONE*-1) and not self.game.player.moving_y and self.controller_dir_reset:
                 print(f"{self.controller.name} - UP")
                 self.up_pressed = True
-                self.player1_sprite.last_y = self.player1_sprite.center_y
-                self.player1_sprite.update_player_speed()
+                self.game.player.last_y = self.game.player.center_y
                 self.controller_dir_reset = False
 
             # controller Down
-            if self.controller.y > DEAD_ZONE and not self.player1_sprite.moving_y and self.controller_dir_reset:
+            if self.controller.y > DEAD_ZONE and not self.game.player.moving_y and self.controller_dir_reset:
                 self.down_pressed = True
-                self.player1_sprite.last_y = self.player1_sprite.center_y
-                self.player1_sprite.update_player_speed()
+                self.game.player.last_y = self.game.player.center_y
                 self.controller_dir_reset = False
 
             # controller Right
-            if self.controller.x > DEAD_ZONE and not self.player1_sprite.moving_x and self.controller_dir_reset:
+            if self.controller.x > DEAD_ZONE and not self.game.player.moving_x and self.controller_dir_reset:
                 self.right_pressed = True
-                self.player1_sprite.last_x = self.player1_sprite.center_x
-                self.player1_sprite.update_player_speed()
+                self.game.player.last_x = self.game.player.center_x
                 self.controller_dir_reset = False
 
             # controller Left
-            if self.controller.x < (DEAD_ZONE*-1) and not self.player1_sprite.moving_x and self.controller_dir_reset:
+            if self.controller.x < (DEAD_ZONE*-1) and not self.game.player.moving_x and self.controller_dir_reset:
                 self.left_pressed = True
-                self.player1_sprite.last_x = self.player1_sprite.center_x
-                self.player1_sprite.update_player_speed()
+                self.game.player.last_x = self.game.player.center_x
                 self.controller_dir_reset = False
 
             # controler dir reset
@@ -1090,20 +1070,16 @@ class GameView(arcade.View):
 
         if key == arcade.key.UP or key == arcade.key.W:
             self.up_pressed = True
-            #self.player1_sprite.last_y = self.player1_sprite.center_y
-            self.player1_sprite.move("up")
+            self.game.player.move("up")
         elif key == arcade.key.DOWN or key == arcade.key.S:
             self.down_pressed = True
-            #self.player1_sprite.last_y = self.player1_sprite.center_y
-            self.player1_sprite.move("down")
+            self.game.player.move("down")
         elif key == arcade.key.LEFT or key == arcade.key.A:
             self.left_pressed = True
-            #self.player1_sprite.last_x = self.player1_sprite.center_x
-            self.player1_sprite.move("left")
+            self.game.player.move("left")
         elif key == arcade.key.RIGHT or key == arcade.key.D:
             self.right_pressed = True
-            #self.player1_sprite.last_x = self.player1_sprite.center_x
-            self.player1_sprite.move("right")
+            self.game.player.move("right")
         if key == arcade.key.ESCAPE:
             menu_view = MenuView()
             self.window.show_view(menu_view)
@@ -1111,13 +1087,13 @@ class GameView(arcade.View):
             end_game = EndGame()
             self.window.show_view(end_game)
         if key == arcade.key.G and modifiers == arcade.key.MOD_SHIFT:
-            self.god_mode = not self.god_mode
-            if self.god_mode:
+            self.game.god_mode = not self.game.god_mode
+            if self.game.god_mode:
                 print("GOD MODE ON~")
-                self.player1_sprite.color = arcade.color.GOLD
+                self.game.player.color = arcade.color.GOLD
             else:
                 print("GOD MODE OFF~")
-                self.player1_sprite.color = arcade.color.WHITE
+                self.game.player.color = arcade.color.WHITE
 
     def on_key_release(self, key, modifiers):
         """Called when the user releases a key. """
@@ -1133,10 +1109,14 @@ class GameView(arcade.View):
 
 
 class EndGame(arcade.View):
+    """
+    Displays the end game screen with options to return to main menu or try again.
+    Handles game over state.
+    """
     def __init__(self):
         super().__init__()
         # Setup base background colour
-        arcade.set_background_color(arcade.color.BLACK)
+        arcade.set_background_color(END_GAME_BACKGROUND_COLOR)
         self.manager = arcade.gui.UIManager()
         self.manager.enable()
 
@@ -1254,8 +1234,7 @@ class EndGame(arcade.View):
 
     def try_again(self, event):
         game_view = GameView(1, "endless", "easy", Controllers())
-        game_view.player_setup()
-        game_view.level_setup()
+        game_view.setup()
         self.window.show_view(game_view)
 
 

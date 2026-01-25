@@ -483,6 +483,7 @@ class Player(arcade.Sprite):
         self.collide_offset = "none"
         self.death_collided_sprites = []
         self.window = window
+        self.game_view = None
         self.pre_collider = None
         self.score = 0
         self.lives = STARTING_LIVES
@@ -631,6 +632,10 @@ class Player(arcade.Sprite):
                 for i in range(4):
                     self.answer_texts[i].text = str(self.possible_answers[i])
                     self.answer_list[i].value = self.possible_answers[i]
+                # Update game's question values
+                self.game_view.game.value1 = self.value1
+                self.game_view.game.value2 = self.value2
+                self.game_view.game.operator = self.operator
             else:
                 self.center_x = SCREEN_WIDTH / 2
                 self.bottom =  MOVEMENT_LIMIT_Y -5
@@ -1009,6 +1014,7 @@ class GameView(arcade.View):
     def setup(self):
         self.game = Game(self.players, self.mode, self.difficulty, self.controllers)
         self.game.player.window = self.window
+        self.game.player.game_view = self
 
     def on_draw(self):
         """ Render the screen. """

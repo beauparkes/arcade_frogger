@@ -18,7 +18,7 @@ FONT_COLOUR_RED = [255, 55, 0, 255]
 
 # Sprite settings
 SPRITE_SCALING = 0.5
-STARTING_LIVES = 100
+STARTING_LIVES = 3
 
 # Movement settings
 MOVEMENT_SPEED = 10
